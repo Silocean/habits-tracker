@@ -77,6 +77,17 @@
       <div class="heatmap-cards" id="heatmapCards" role="list"></div>
     </main>
   </div>
+  <div class="confirm-modal hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalMessage">
+    <div class="confirm-modal-backdrop" id="confirmModalBackdrop"></div>
+    <div class="confirm-modal-inner">
+      <h2 class="confirm-modal-title" id="confirmModalTitle">确认</h2>
+      <p class="confirm-modal-message" id="confirmModalMessage">确定要删除这个兴趣记录吗？</p>
+      <div class="confirm-modal-actions">
+        <button type="button" class="btn btn-ghost" id="confirmModalCancel">取消</button>
+        <button type="button" class="btn btn-danger" id="confirmModalConfirm">确定</button>
+      </div>
+    </div>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>

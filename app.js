@@ -757,12 +757,17 @@
       });
 
       actionsDropdown.querySelector(".card-action-delete").addEventListener("click", function () {
-        if (!confirm("确定要删除这个兴趣记录吗？")) return;
-        const idx = getHeatmapIndex(heatmap.id);
-        if (idx === -1) return;
-        heatmaps.splice(idx, 1);
-        save();
-        renderAllHeatmaps();
+        actionsDropdown.classList.add("hidden");
+        showConfirmModal({
+          message: "确定要删除这个兴趣记录吗？",
+          onConfirm: function () {
+            const idx = getHeatmapIndex(heatmap.id);
+            if (idx === -1) return;
+            heatmaps.splice(idx, 1);
+            save();
+            renderAllHeatmaps();
+          },
+        });
       });
 
       moreBtn.addEventListener("click", function (e) {
@@ -780,6 +785,46 @@
     })();
 
     return card;
+  }
+
+  function showConfirmModal(options) {
+    const { message = "确定吗？", onConfirm } = options;
+    const modal = $("confirmModal");
+    const messageEl = $("confirmModalMessage");
+    const cancelBtn = $("confirmModalCancel");
+    const confirmBtn = $("confirmModalConfirm");
+    const backdrop = $("confirmModalBackdrop");
+    if (!modal || !messageEl) return;
+    messageEl.textContent = message;
+    modal.classList.remove("hidden");
+
+    function close() {
+      modal.classList.add("hidden");
+      cancelBtn.removeEventListener("click", onCancel);
+      confirmBtn.removeEventListener("click", onConfirmClick);
+      backdrop.removeEventListener("click", onBackdropClick);
+      document.removeEventListener("keydown", onEsc);
+    }
+    function onCancel() {
+      close();
+    }
+    function onConfirmClick() {
+      close();
+      if (typeof onConfirm === "function") onConfirm();
+    }
+    function onBackdropClick(e) {
+      if (e.target === backdrop) close();
+    }
+    function onEsc(e) {
+      if (e.key === "Escape") {
+        close();
+        e.preventDefault();
+      }
+    }
+    cancelBtn.addEventListener("click", onCancel);
+    confirmBtn.addEventListener("click", onConfirmClick);
+    backdrop.addEventListener("click", onBackdropClick);
+    document.addEventListener("keydown", onEsc);
   }
 
   function renderAllHeatmaps() {

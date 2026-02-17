@@ -1222,3 +1222,67 @@ body {
   background: var(--danger-soft);
   border-color: rgba(207, 34, 46, 0.2);
 }
+
+/* ===== 确认弹窗 ===== */
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1010;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.confirm-modal.hidden {
+  display: none;
+}
+
+.confirm-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  cursor: default;
+}
+
+.confirm-modal-inner {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.confirm-modal-title {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.confirm-modal-message {
+  margin: 0 0 20px;
+  font-size: 15px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #a61e2a;
+  color: #fff;
+}
