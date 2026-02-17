@@ -1008,10 +1008,13 @@
       console.log("[日迹 sync] pushToGist 响应", { status: res.status, ok: res.ok, message: data.message });
       if (!res.ok) {
         const msg = data.message || "推送失败 " + res.status;
-        setSyncStatus(msg, true);
-        lastSyncErrorMessage = "推送失败，请打开「云同步」查看";
+        const limit = res.headers.get("X-RateLimit-Limit");
+        const remaining = res.headers.get("X-RateLimit-Remaining");
+        const rateHint = limit === "60" ? "（当前按未认证限制 60 次/小时，请确认已在本页保存 Token）" : limit ? "（限额 " + limit + "/小时，剩余 " + remaining + "）" : "";
+        setSyncStatus(msg + rateHint, true);
+        lastSyncErrorMessage = "推送失败，请打开「云同步」查看" + (limit === "60" ? "。若为 rate limit，请确认 Token 已保存且在本域名下有效。" : "");
         updateSyncStatusText();
-        console.warn("[日迹 sync] 推送失败", msg);
+        console.warn("[日迹 sync] 推送失败", msg, { limit, remaining });
         return;
       }
       lastSyncErrorMessage = null;
@@ -1060,7 +1063,15 @@
       });
       const data = await res.json();
       if (!res.ok) {
-        setSyncStatus(data.message || "拉取失败 " + res.status, true);
+        const msg = data.message || "拉取失败 " + res.status;
+        const limit = res.headers.get("X-RateLimit-Limit");
+        const remaining = res.headers.get("X-RateLimit-Remaining");
+        const rateHint = limit === "60" ? "（未认证 60次/小时，请确认已在本页保存 Token）" : limit ? "（限额 " + limit + "，剩余 " + remaining + "）" : "";
+        setSyncStatus(msg + rateHint, true);
+        if (limit === "60") {
+          lastSyncErrorMessage = "API 限制。请在本页打开「云同步」保存 Token（与本地/其他网址的 Token 需分别保存）";
+          updateSyncStatusText();
+        }
         return false;
       }
       const file = data.files && data.files[GIST_FILENAME];
