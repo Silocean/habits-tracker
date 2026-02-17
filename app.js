@@ -21,6 +21,7 @@
   const AUTO_PUSH_DELAY_MS = 3000;
   const SYNC_PULL_INTERVAL_MS = 30 * 1000;
   let syncPullIntervalId = null;
+  let lastSyncErrorMessage = null;
 
   function startSyncPullInterval() {
     if (syncPullIntervalId) clearInterval(syncPullIntervalId);
@@ -82,6 +83,11 @@
   function updateSyncStatusText() {
     const el = $("syncStatusText");
     if (!el) return;
+    if (lastSyncErrorMessage) {
+      el.textContent = lastSyncErrorMessage;
+      el.classList.add("sync-dirty");
+      return;
+    }
     const lastPush = localStorage.getItem(SYNC_LAST_PUSH_KEY);
     if (lastPush) {
       const t = parseInt(lastPush, 10);
@@ -90,7 +96,11 @@
       el.textContent = isDirty() ? "未同步更改 · 上次 " + str : "上次同步 " + str;
       el.classList.toggle("sync-dirty", isDirty());
     } else {
-      el.textContent = isDirty() ? "未同步更改" : "";
+      if (isDirty() && !getSyncToken()) {
+        el.textContent = "未同步（请打开「云同步」保存 Token）";
+      } else {
+        el.textContent = isDirty() ? "未同步更改" : "";
+      }
       el.classList.toggle("sync-dirty", isDirty());
     }
   }
@@ -982,14 +992,13 @@
       const res = await fetch(url, opts);
       const data = await res.json();
       if (!res.ok) {
-        setSyncStatus(data.message || "推送失败 " + res.status, true);
-        const statusEl = $("syncStatusText");
-        if (statusEl) {
-          statusEl.textContent = "推送失败，请打开「云同步」查看";
-          statusEl.classList.add("sync-dirty");
-        }
+        const msg = data.message || "推送失败 " + res.status;
+        setSyncStatus(msg, true);
+        lastSyncErrorMessage = "推送失败，请打开「云同步」查看";
+        updateSyncStatusText();
         return;
       }
+      lastSyncErrorMessage = null;
       if (data.id) {
         setGistId(data.id);
         const gistDisplay = $("syncGistIdDisplay");
@@ -1002,11 +1011,8 @@
       setSyncStatus("已推送到云端 " + new Date().toLocaleTimeString("zh-CN"));
     } catch (err) {
       setSyncStatus("网络错误：" + (err.message || "未知"), true);
-      const statusEl = $("syncStatusText");
-      if (statusEl) {
-        statusEl.textContent = "推送失败，请打开「云同步」查看";
-        statusEl.classList.add("sync-dirty");
-      }
+      lastSyncErrorMessage = "推送失败，请打开「云同步」查看";
+      updateSyncStatusText();
     } finally {
       setSyncLoading(false);
     }
@@ -1050,6 +1056,7 @@
         return false;
       }
       heatmaps = parsed;
+      lastSyncErrorMessage = null;
       lastSyncedSnapshot = JSON.stringify(heatmaps);
       localStorage.setItem(SYNC_LAST_PUSH_KEY, String(Date.now()));
       localStorage.setItem(SYNC_LAST_SNAPSHOT_KEY, lastSyncedSnapshot);
@@ -1236,11 +1243,8 @@
     if (hasSyncConfig) {
       const ok = await pullFromGist({ skipDirtyCheck: true });
       if (!ok) {
-        const statusEl = $("syncStatusText");
-        if (statusEl) {
-          statusEl.textContent = "自动拉取失败，请打开「云同步」重试";
-          statusEl.classList.add("sync-dirty");
-        }
+        lastSyncErrorMessage = "自动拉取失败，请打开「云同步」重试";
+        updateSyncStatusText();
       }
     }
     renderAllHeatmaps();
