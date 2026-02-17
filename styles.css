@@ -1200,6 +1200,17 @@ body {
   height: 80px;
   display: block;
 }
+.trend-chart-empty {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.trend-chart-empty-tip {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
 
 /* ===== 工具提示 ===== */
 .tooltip {

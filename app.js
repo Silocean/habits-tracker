@@ -706,13 +706,23 @@
     function refreshTrendChart() {
       const viewRange = heatmap.viewRange == null ? "recent" : heatmap.viewRange;
       const trendData = getTrendDataByMonth(heatmap, viewRange);
+      const allZero = trendData.every((x) => x.total === 0);
+      trendChartWrap.innerHTML = "";
+      trendChartWrap.classList.remove("trend-chart-empty");
+      if (allZero) {
+        const emptyTip = document.createElement("p");
+        emptyTip.className = "trend-chart-empty-tip";
+        emptyTip.textContent = "暂无数据";
+        trendChartWrap.classList.add("trend-chart-empty");
+        trendChartWrap.appendChild(emptyTip);
+        return;
+      }
       const maxVal = Math.max(1, ...trendData.map((x) => x.total));
       const h = 80;
       const gap = 4;
       const barW = 24;
       const n = trendData.length;
       const w = n * barW + (n - 1) * gap;
-      trendChartWrap.innerHTML = "";
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("viewBox", "0 0 " + w + " " + h);
       svg.setAttribute("class", "trend-svg");
