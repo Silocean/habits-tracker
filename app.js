@@ -22,6 +22,16 @@
   const SYNC_PULL_INTERVAL_MS = 30 * 1000;
   let syncPullIntervalId = null;
 
+  function startSyncPullInterval() {
+    if (syncPullIntervalId) clearInterval(syncPullIntervalId);
+    syncPullIntervalId = null;
+    if (!getSyncToken() || !getGistId()) return;
+    syncPullIntervalId = setInterval(function () {
+      if (!getSyncToken() || !getGistId() || syncInProgress) return;
+      pullFromGist({ skipDirtyCheck: true });
+    }, SYNC_PULL_INTERVAL_MS);
+  }
+
   const $ = (id) => document.getElementById(id);
   const mainPlaceholder = $("mainPlaceholder");
   const heatmapCards = $("heatmapCards");
@@ -973,6 +983,11 @@
       const data = await res.json();
       if (!res.ok) {
         setSyncStatus(data.message || "推送失败 " + res.status, true);
+        const statusEl = $("syncStatusText");
+        if (statusEl) {
+          statusEl.textContent = "推送失败，请打开「云同步」查看";
+          statusEl.classList.add("sync-dirty");
+        }
         return;
       }
       if (data.id) {
@@ -987,6 +1002,11 @@
       setSyncStatus("已推送到云端 " + new Date().toLocaleTimeString("zh-CN"));
     } catch (err) {
       setSyncStatus("网络错误：" + (err.message || "未知"), true);
+      const statusEl = $("syncStatusText");
+      if (statusEl) {
+        statusEl.textContent = "推送失败，请打开「云同步」查看";
+        statusEl.classList.add("sync-dirty");
+      }
     } finally {
       setSyncLoading(false);
     }
@@ -1180,6 +1200,7 @@
         const v = input && input.value.trim();
         setSyncToken(v || null);
         setSyncStatus(v ? "Token 已保存" : "Token 已清除");
+        startSyncPullInterval();
       });
     }
     const btnBindGist = $("btnSyncBindGist");
@@ -1196,6 +1217,7 @@
         const gistDisplay = $("syncGistIdDisplay");
         if (gistDisplay) gistDisplay.value = id;
         setSyncStatus("已绑定 Gist，可点击「从云端拉取」");
+        startSyncPullInterval();
       });
     }
     if (btnPush) btnPush.addEventListener("click", pushToGist);
@@ -1235,13 +1257,7 @@
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("sw.js").catch(() => {});
     }
-    if (hasSyncConfig) {
-      if (syncPullIntervalId) clearInterval(syncPullIntervalId);
-      syncPullIntervalId = setInterval(function () {
-        if (!getSyncToken() || !getGistId() || syncInProgress) return;
-        pullFromGist({ skipDirtyCheck: true });
-      }, SYNC_PULL_INTERVAL_MS);
-    }
+    startSyncPullInterval();
   }
 
   init();
