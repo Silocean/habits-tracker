@@ -308,14 +308,77 @@ body {
   border-color: var(--accent);
 }
 
-.color-input {
+.color-picker-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.color-swatch {
   width: 36px;
   height: 36px;
-  padding: 2px;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-card);
   cursor: pointer;
+  flex-shrink: 0;
+}
+
+.color-picker-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+  min-width: 180px;
+}
+
+.color-picker-dropdown.hidden {
+  display: none;
+}
+
+.color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.color-picker-row:last-child {
+  margin-bottom: 0;
+}
+
+.color-picker-row span {
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.color-picker-row .color-range {
+  flex: 1;
+  min-width: 0;
+  height: 6px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.color-picker-row .color-hex {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
 }
 
 /* ===== 热力图区域 ===== */
@@ -327,6 +390,17 @@ body {
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-sm);
+}
+
+.heatmap-stats {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.heatmap-stats strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .heatmap-legend {

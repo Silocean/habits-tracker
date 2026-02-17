@@ -94,6 +94,42 @@
     return `${y}-${m}-${day}`;
   }
 
+  /** 统计当前时间范围内的总次数、最长连续天数、日均次数（按唯一日期统计，避免同一日重复计入） */
+  function getHeatmapStats(heatmap, viewRange) {
+    const gridDates = getGridDates(viewRange);
+    const rangeDates = viewRange === "recent" ? gridDates : gridDates.filter((x) => x.inYear);
+    const uniqueKeys = new Set();
+    rangeDates.forEach(({ date }) => uniqueKeys.add(formatDateKey(date)));
+    const daysInRange = uniqueKeys.size;
+    let total = 0;
+    const keysWithRecord = [];
+    uniqueKeys.forEach((key) => {
+      const c = heatmap.data[key] || 0;
+      total += c;
+      if (c >= 1) keysWithRecord.push(key);
+    });
+    keysWithRecord.sort();
+    let streakDays = 0;
+    if (keysWithRecord.length) {
+      let run = 1;
+      for (let i = 1; i < keysWithRecord.length; i++) {
+        const prev = new Date(keysWithRecord[i - 1]);
+        const curr = new Date(keysWithRecord[i]);
+        prev.setHours(0, 0, 0, 0);
+        curr.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((curr - prev) / (24 * 60 * 60 * 1000));
+        if (diffDays === 1) run++;
+        else {
+          if (run > streakDays) streakDays = run;
+          run = 1;
+        }
+      }
+      if (run > streakDays) streakDays = run;
+    }
+    const avgPerDay = daysInRange ? total / daysInRange : 0;
+    return { total, streakDays, daysInRange, avgPerDay };
+  }
+
   function getLevel(count) {
     if (!count || count <= 0) return 0;
     if (count <= 1) return 1;
@@ -147,6 +183,14 @@
     return div.innerHTML;
   }
 
+  function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 0, g: 0, b: 0 };
+  }
+  function rgbToHex(r, g, b) {
+    return "#" + [r, g, b].map((x) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, "0")).join("");
+  }
+
   function buildLegendHTML(colors) {
     return [0, 1, 2, 3, 4]
       .map(
@@ -195,9 +239,21 @@
     const count = typeof getCount === "function" ? getCount() : getCount;
     tooltipEl.textContent = `${key} · ${count} 次`;
     tooltipEl.classList.remove("hidden");
-    const rect = e.target.getBoundingClientRect();
-    tooltipEl.style.left = rect.left + rect.width / 2 - tooltipEl.offsetWidth / 2 + "px";
-    tooltipEl.style.top = rect.top - tooltipEl.offsetHeight - 8 + "px";
+    const gap = 12;
+    let left = e.clientX + gap;
+    let top = e.clientY;
+    requestAnimationFrame(() => {
+      const w = tooltipEl.offsetWidth;
+      const h = tooltipEl.offsetHeight;
+      if (left + w > window.innerWidth - 8) left = e.clientX - gap - w;
+      if (left < 8) left = 8;
+      if (top + h > window.innerHeight - 8) top = window.innerHeight - h - 8;
+      if (top < 8) top = 8;
+      tooltipEl.style.left = left + "px";
+      tooltipEl.style.top = top + "px";
+    });
+    tooltipEl.style.left = left + "px";
+    tooltipEl.style.top = top + "px";
   }
   function hideTooltip() {
     if (tooltipEl) tooltipEl.classList.add("hidden");
@@ -312,11 +368,18 @@
       '<label class="range-label"><span>时间范围</span><select class="range-select">' +
       rangeOptions +
       "</select></label>" +
-      '<label class="color-label"><span>颜色</span><input type="color" class="color-input" value="' +
-      escapeHtml(heatmap.color) +
-      '" /></label>' +
+      '<label class="color-label"><span>颜色</span><div class="color-picker-wrap"></div></label>' +
       '<button type="button" class="btn btn-ghost btn-delete">删除</button>' +
       "</div>";
+
+    const statsDiv = document.createElement("div");
+    statsDiv.className = "heatmap-stats";
+    function updateStatsDom() {
+      const s = getHeatmapStats(heatmap, heatmap.viewRange == null ? "recent" : heatmap.viewRange);
+      statsDiv.innerHTML =
+        `总 <strong>${s.total}</strong> 次 · 最长连续 <strong>${s.streakDays}</strong> 天 · 日均 <strong>${s.avgPerDay.toFixed(2)}</strong> 次`;
+    }
+    updateStatsDom();
 
     const legendDiv = document.createElement("div");
     legendDiv.className = "heatmap-legend";
@@ -362,6 +425,12 @@
         cell.style.background = colors[displayLevel];
       }
       refreshTooltipForCell(cell);
+      const card = cell.closest(".heatmap-card");
+      const st = card && card.querySelector(".heatmap-stats");
+      if (st) {
+        const s = getHeatmapStats(heatmap, heatmap.viewRange == null ? "recent" : heatmap.viewRange);
+        st.innerHTML = `总 <strong>${s.total}</strong> 次 · 最长连续 <strong>${s.streakDays}</strong> 天 · 日均 <strong>${s.avgPerDay.toFixed(2)}</strong> 次`;
+      }
     }
 
     const todayKey = formatDateKey(new Date());
@@ -419,6 +488,7 @@
     hint.className = "heatmap-hint";
     hint.textContent = "点击增加 · Shift+点击减少 · 右键菜单可清零";
     wrap.appendChild(header);
+    wrap.appendChild(statsDiv);
     wrap.appendChild(legendDiv);
     wrap.appendChild(container);
     wrap.appendChild(hint);
@@ -427,7 +497,7 @@
     const titleDisplay = header.querySelector(".heatmap-title-display");
     const titleInput = header.querySelector(".heatmap-title");
     const rangeSelect = header.querySelector(".range-select");
-    const colorInput = header.querySelector(".color-input");
+    const colorPickerWrap = header.querySelector(".color-picker-wrap");
     const deleteBtn = header.querySelector(".btn-delete");
 
     function commitTitle() {
@@ -463,11 +533,84 @@
       renderAllHeatmaps();
     });
 
-    colorInput.addEventListener("input", function () {
-      heatmap.color = this.value;
-      save();
-      renderAllHeatmaps();
-    });
+    (function setupColorPicker() {
+      const rgb = hexToRgb(heatmap.color);
+      const swatch = document.createElement("button");
+      swatch.type = "button";
+      swatch.className = "color-swatch";
+      swatch.style.background = heatmap.color;
+      swatch.setAttribute("aria-label", "选择颜色");
+      const dropdown = document.createElement("div");
+      dropdown.className = "color-picker-dropdown hidden";
+      dropdown.innerHTML =
+        '<div class="color-picker-row"><span>R</span><input type="range" min="0" max="255" class="color-range color-r"></div>' +
+        '<div class="color-picker-row"><span>G</span><input type="range" min="0" max="255" class="color-range color-g"></div>' +
+        '<div class="color-picker-row"><span>B</span><input type="range" min="0" max="255" class="color-range color-b"></div>' +
+        '<div class="color-picker-row"><span>#</span><input type="text" class="color-hex" maxlength="7" placeholder="#000000"></div>';
+      const rInput = dropdown.querySelector(".color-r");
+      const gInput = dropdown.querySelector(".color-g");
+      const bInput = dropdown.querySelector(".color-b");
+      const hexInput = dropdown.querySelector(".color-hex");
+      rInput.value = rgb.r;
+      gInput.value = rgb.g;
+      bInput.value = rgb.b;
+      hexInput.value = heatmap.color;
+
+      function applyColor(hex) {
+        hex = hex.startsWith("#") ? hex : "#" + hex;
+        if (!/^#[0-f]{6}$/i.test(hex)) return;
+        heatmap.color = hex;
+        save();
+        swatch.style.background = hex;
+        hexInput.value = hex;
+        const c = hexToRgb(hex);
+        rInput.value = c.r;
+        gInput.value = c.g;
+        bInput.value = c.b;
+        const newColors = getLevelColors(hex);
+        const legendBlocks = card.querySelector(".legend-blocks");
+        if (legendBlocks) legendBlocks.innerHTML = [0, 1, 2, 3, 4].map((i) => `<span style="background: ${newColors[i]}; border: ${i === 0 ? "1px solid var(--border)" : "none"};"></span>`).join("");
+        card.querySelectorAll(".heatmap-cell").forEach((cell) => {
+          const level = parseInt(cell.dataset.count || "0", 10);
+          const displayLevel = level <= 0 ? 0 : getLevel(level);
+          cell.style.background = displayLevel === 0 ? "" : newColors[displayLevel];
+        });
+      }
+      function syncFromRgb() {
+        const r = parseInt(rInput.value, 10);
+        const g = parseInt(gInput.value, 10);
+        const b = parseInt(bInput.value, 10);
+        applyColor(rgbToHex(r, g, b));
+      }
+      rInput.addEventListener("input", syncFromRgb);
+      gInput.addEventListener("input", syncFromRgb);
+      bInput.addEventListener("input", syncFromRgb);
+      hexInput.addEventListener("input", function () {
+        const v = this.value.trim();
+        if (/^#?[0-9a-fA-F]{6}$/.test(v)) applyColor(v.startsWith("#") ? v : "#" + v);
+      });
+      hexInput.addEventListener("change", function () {
+        const v = this.value.trim();
+        if (v && /^#?[0-9a-fA-F]{6}$/.test(v)) applyColor(v.startsWith("#") ? v : "#" + v);
+        else this.value = heatmap.color;
+      });
+
+      swatch.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const open = document.querySelector(".color-picker-dropdown:not(.hidden)");
+        if (open && open !== dropdown) open.classList.add("hidden");
+        dropdown.classList.toggle("hidden");
+      });
+      document.addEventListener("click", function closePicker(e) {
+        if (dropdown.classList.contains("hidden")) return;
+        if (!colorPickerWrap.contains(e.target)) {
+          dropdown.classList.add("hidden");
+        }
+      });
+
+      colorPickerWrap.appendChild(swatch);
+      colorPickerWrap.appendChild(dropdown);
+    })();
 
     deleteBtn.addEventListener("click", function () {
       if (!confirm("确定要删除这个兴趣记录吗？")) return;
