@@ -19,6 +19,8 @@
   let syncInProgress = false;
   let autoPushTimer = null;
   const AUTO_PUSH_DELAY_MS = 3000;
+  const SYNC_PULL_INTERVAL_MS = 30 * 1000;
+  let syncPullIntervalId = null;
 
   const $ = (id) => document.getElementById(id);
   const mainPlaceholder = $("mainPlaceholder");
@@ -996,13 +998,13 @@
     const gistId = getGistId();
     if (!token) {
       setSyncStatus("请先填写并保存 Token", true);
-      return;
+      return false;
     }
     if (!gistId) {
-      setSyncStatus("请先执行一次「推送到云端」以创建 Gist", true);
-      return;
+      setSyncStatus("请先执行一次「推送到云端」或绑定 Gist ID", true);
+      return false;
     }
-    if (!skipDirtyCheck && isDirty() && !confirm("本地有未同步的更改，拉取将覆盖本地数据。是否继续？")) return;
+    if (!skipDirtyCheck && isDirty() && !confirm("本地有未同步的更改，拉取将覆盖本地数据。是否继续？")) return false;
     setSyncLoading(true);
     setSyncStatus("拉取中…");
     try {
@@ -1015,17 +1017,17 @@
       const data = await res.json();
       if (!res.ok) {
         setSyncStatus(data.message || "拉取失败 " + res.status, true);
-        return;
+        return false;
       }
       const file = data.files && data.files[GIST_FILENAME];
       if (!file || file.content == null) {
         setSyncStatus("Gist 中未找到 " + GIST_FILENAME, true);
-        return;
+        return false;
       }
       const parsed = JSON.parse(file.content);
       if (!Array.isArray(parsed)) {
         setSyncStatus("数据格式无效", true);
-        return;
+        return false;
       }
       heatmaps = parsed;
       lastSyncedSnapshot = JSON.stringify(heatmaps);
@@ -1035,8 +1037,10 @@
       renderAllHeatmaps();
       updateSyncStatusText();
       setSyncStatus("已从云端拉取 " + new Date().toLocaleTimeString("zh-CN"));
+      return true;
     } catch (err) {
       setSyncStatus("网络错误：" + (err.message || "未知"), true);
+      return false;
     } finally {
       setSyncLoading(false);
     }
@@ -1195,7 +1199,7 @@
       });
     }
     if (btnPush) btnPush.addEventListener("click", pushToGist);
-    if (btnPull) btnPull.addEventListener("click", pullFromGist);
+    if (btnPull) btnPull.addEventListener("click", function () { pullFromGist({ skipDirtyCheck: true }); });
   }
 
   async function init() {
@@ -1206,10 +1210,16 @@
       heatmaps = [createHeatmap("示例兴趣", "#216e39")];
       save();
     }
-    if (getSyncToken() && getGistId()) {
-      try {
-        await pullFromGist({ skipDirtyCheck: true });
-      } catch (_) {}
+    const hasSyncConfig = getSyncToken() && getGistId();
+    if (hasSyncConfig) {
+      const ok = await pullFromGist({ skipDirtyCheck: true });
+      if (!ok) {
+        const statusEl = $("syncStatusText");
+        if (statusEl) {
+          statusEl.textContent = "自动拉取失败，请打开「云同步」重试";
+          statusEl.classList.add("sync-dirty");
+        }
+      }
     }
     renderAllHeatmaps();
     setupCardDragDrop();
@@ -1224,6 +1234,13 @@
     }
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+    if (hasSyncConfig) {
+      if (syncPullIntervalId) clearInterval(syncPullIntervalId);
+      syncPullIntervalId = setInterval(function () {
+        if (!getSyncToken() || !getGistId() || syncInProgress) return;
+        pullFromGist({ skipDirtyCheck: true });
+      }, SYNC_PULL_INTERVAL_MS);
     }
   }
 
