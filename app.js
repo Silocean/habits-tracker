@@ -17,20 +17,58 @@
   let heatmaps = [];
   let lastSyncedSnapshot = null;
   let syncInProgress = false;
+  let selectedTag = "";
   let autoPushTimer = null;
   const AUTO_PUSH_DELAY_MS = 3000;
-  const SYNC_PULL_INTERVAL_MS = 30 * 1000;
+  const SYNC_PULL_INTERVAL_MS = 5 * 60 * 1000; // 5 分钟，避免 100 次/小时 限额
   let syncPullIntervalId = null;
+  let syncPullRateLimitTimeoutId = null;
   let lastSyncErrorMessage = null;
 
   function startSyncPullInterval() {
     if (syncPullIntervalId) clearInterval(syncPullIntervalId);
+    if (syncPullRateLimitTimeoutId) clearTimeout(syncPullRateLimitTimeoutId);
     syncPullIntervalId = null;
+    syncPullRateLimitTimeoutId = null;
     if (!getSyncToken() || !getGistId()) return;
     syncPullIntervalId = setInterval(function () {
       if (!getSyncToken() || !getGistId() || syncInProgress) return;
       pullFromGist({ skipDirtyCheck: true });
     }, SYNC_PULL_INTERVAL_MS);
+  }
+
+  function pauseSyncPullUntilReset(resetTimestampSec) {
+    if (syncPullIntervalId) {
+      clearInterval(syncPullIntervalId);
+      syncPullIntervalId = null;
+    }
+    if (syncPullRateLimitTimeoutId) clearTimeout(syncPullRateLimitTimeoutId);
+    const resetMs = resetTimestampSec * 1000 - Date.now();
+    if (resetMs <= 0) {
+      startSyncPullInterval();
+      return;
+    }
+    syncPullRateLimitTimeoutId = setTimeout(function () {
+      syncPullRateLimitTimeoutId = null;
+      startSyncPullInterval();
+    }, Math.min(resetMs + 5000, 60 * 60 * 1000)); // 最多等 1 小时
+  }
+
+  function formatRateLimitHint(res) {
+    const limit = res.headers.get("X-RateLimit-Limit");
+    const remaining = res.headers.get("X-RateLimit-Remaining");
+    const resetSec = res.headers.get("X-RateLimit-Reset");
+    let hint = "";
+    if (limit) {
+      hint = "（限额 " + limit + "/小时，剩余 " + (remaining !== null && remaining !== "" ? remaining : "0") + "）";
+      if (limit === "60") hint += " 未认证时仅 60 次/小时，请确认已保存 Token";
+    }
+    if (resetSec) {
+      const resetDate = new Date(parseInt(resetSec, 10) * 1000);
+      const mins = Math.round((resetDate - new Date()) / 60000);
+      hint += "。请于 " + resetDate.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }) + " 后重试" + (mins > 0 ? "（约 " + mins + " 分钟）" : "");
+    }
+    return hint;
   }
 
   const $ = (id) => document.getElementById(id);
@@ -53,6 +91,8 @@
       if (!Array.isArray(heatmaps)) heatmaps = [];
       heatmaps.forEach((h) => {
         if (h.collapsed == null) h.collapsed = false;
+        if (!Array.isArray(h.tags)) h.tags = [];
+        if (h.trendExpanded == null) h.trendExpanded = false;
       });
     } catch (_) {
       heatmaps = [];
@@ -203,6 +243,40 @@
     return { total, streakDays, daysInRange, avgPerDay };
   }
 
+  /** 当前时间范围内每月总次数，用于趋势图 */
+  function getTrendDataByMonth(heatmap, viewRange) {
+    const range = viewRange === undefined || viewRange === "recent" ? "recent" : Number(viewRange);
+    const result = [];
+    if (range === "recent") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const y = d.getFullYear();
+        const m = d.getMonth();
+        const next = new Date(y, m + 1, 0);
+        let total = 0;
+        for (let day = 1; day <= next.getDate(); day++) {
+          const key = formatDateKey(new Date(y, m, day));
+          total += heatmap.data[key] || 0;
+        }
+        result.push({ label: (m + 1) + "月", total });
+      }
+    } else {
+      const year = range;
+      for (let m = 0; m < 12; m++) {
+        const next = new Date(year, m + 1, 0);
+        let total = 0;
+        for (let day = 1; day <= next.getDate(); day++) {
+          const key = formatDateKey(new Date(year, m, day));
+          total += heatmap.data[key] || 0;
+        }
+        result.push({ label: (m + 1) + "月", total });
+      }
+    }
+    return result;
+  }
+
   function getLevel(count) {
     if (!count || count <= 0) return 0;
     if (count <= 1) return 1;
@@ -240,6 +314,8 @@
       viewRange: new Date().getFullYear(),
       data: {},
       collapsed: false,
+      tags: [],
+      trendExpanded: false,
     };
   }
 
@@ -426,10 +502,12 @@
     card.id = "card-" + heatmap.id;
     card.dataset.heatmapId = heatmap.id;
     card.dataset.heatmapName = (heatmap.name || "").toLowerCase();
+    card.dataset.tags = (heatmap.tags || []).join(" ");
     card.setAttribute("role", "listitem");
 
     const wrap = document.createElement("div");
     wrap.className = "heatmap-wrap";
+    wrap.style.setProperty("--card-accent", heatmap.color);
 
     const header = document.createElement("header");
     header.className = "heatmap-header";
@@ -442,6 +520,7 @@
       `<input type="text" class="heatmap-title heatmap-title-edit hidden" placeholder="未命名兴趣" maxlength="32" value="${escapeHtml(heatmap.name)}" />` +
       "</div>" +
       '<div class="header-actions">' +
+      '<button type="button" class="btn btn-ghost btn-today-plus" title="今日 +1" aria-label="今日记录 +1">今日 +1</button>' +
       '<label class="range-label"><span>时间范围</span><span class="range-select-wrap"><button type="button" class="range-prev" aria-label="上一年" title="上一年">‹</button><button type="button" class="range-display" aria-label="跳转到当前年份" title="点击跳转到当前年份">' +
       escapeHtml(rangeDisplayText) +
       '</button><button type="button" class="range-next" aria-label="下一年" title="下一年">›</button></span></label>' +
@@ -521,6 +600,8 @@
         if (s.total === 0) emptyHintEl.classList.remove("hidden");
         else emptyHintEl.classList.add("hidden");
       }
+      const trendWrapEl = card && card.querySelector(".trend-chart-wrap");
+      if (trendWrapEl && !trendWrapEl.classList.contains("hidden")) refreshTrendChart();
     }
 
     const todayKey = formatDateKey(new Date());
@@ -615,17 +696,63 @@
       else emptyHint.classList.add("hidden");
     }
     updateEmptyHint();
+    const trendToggle = document.createElement("button");
+    trendToggle.type = "button";
+    trendToggle.className = "btn btn-ghost btn-small trend-toggle";
+    trendToggle.textContent = "趋势图";
+    const trendChartWrap = document.createElement("div");
+    trendChartWrap.className = "trend-chart-wrap" + (heatmap.trendExpanded ? "" : " hidden");
+    trendChartWrap.setAttribute("aria-hidden", heatmap.trendExpanded ? "false" : "true");
+    function refreshTrendChart() {
+      const viewRange = heatmap.viewRange == null ? "recent" : heatmap.viewRange;
+      const trendData = getTrendDataByMonth(heatmap, viewRange);
+      const maxVal = Math.max(1, ...trendData.map((x) => x.total));
+      const h = 80;
+      const gap = 4;
+      const barW = 24;
+      const n = trendData.length;
+      const w = n * barW + (n - 1) * gap;
+      trendChartWrap.innerHTML = "";
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+      svg.setAttribute("class", "trend-svg");
+      svg.setAttribute("preserveAspectRatio", "none");
+      trendData.forEach((d, i) => {
+        const barH = maxVal ? (d.total / maxVal) * (h - 16) : 0;
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("x", i * (barW + gap));
+        rect.setAttribute("y", h - 16 - barH);
+        rect.setAttribute("width", barW);
+        rect.setAttribute("height", barH || 0);
+        rect.setAttribute("fill", heatmap.color);
+        rect.setAttribute("rx", 2);
+        svg.appendChild(rect);
+      });
+      trendChartWrap.appendChild(svg);
+    }
+    trendToggle.addEventListener("click", function () {
+      trendChartWrap.classList.toggle("hidden");
+      const isExpanded = !trendChartWrap.classList.contains("hidden");
+      trendChartWrap.setAttribute("aria-hidden", isExpanded ? "false" : "true");
+      heatmap.trendExpanded = isExpanded;
+      save();
+      if (isExpanded) refreshTrendChart();
+    });
     const cardBody = document.createElement("div");
-    cardBody.className = "heatmap-card-body";
-    if (heatmap.collapsed) cardBody.classList.add("hidden");
+    cardBody.className = "heatmap-card-body" + (heatmap.collapsed ? " collapsed" : "");
+    cardBody.setAttribute("aria-hidden", heatmap.collapsed ? "true" : "false");
     cardBody.appendChild(statsDiv);
     cardBody.appendChild(legendDiv);
     cardBody.appendChild(emptyHint);
     cardBody.appendChild(container);
+    cardBody.appendChild(trendToggle);
+    cardBody.appendChild(trendChartWrap);
     cardBody.appendChild(hint);
     wrap.appendChild(header);
     wrap.appendChild(cardBody);
     card.appendChild(wrap);
+
+    if (heatmap.trendExpanded) refreshTrendChart();
 
     const titleDisplay = header.querySelector(".heatmap-title-display");
     const titleInput = header.querySelector(".heatmap-title");
@@ -649,7 +776,8 @@
         heatmap.collapsed = !heatmap.collapsed;
         save();
         card.classList.toggle("card-collapsed", heatmap.collapsed);
-        cardBody.classList.toggle("hidden", heatmap.collapsed);
+        cardBody.classList.toggle("collapsed", heatmap.collapsed);
+        cardBody.setAttribute("aria-hidden", heatmap.collapsed ? "true" : "false");
         collapseBtn.textContent = heatmap.collapsed ? "▼" : "▶";
         collapseBtn.setAttribute("aria-label", heatmap.collapsed ? "展开" : "折叠");
         updateCollapsedSummary();
@@ -658,6 +786,28 @@
       collapseBtn.setAttribute("aria-label", heatmap.collapsed ? "展开" : "折叠");
     }
     updateCollapsedSummary();
+
+    const btnTodayPlus = header.querySelector(".btn-today-plus");
+    if (btnTodayPlus) {
+      btnTodayPlus.addEventListener("click", function () {
+        const todayKeyNow = formatDateKey(new Date());
+        const cur = heatmap.data[todayKeyNow] || 0;
+        const newCount = cur + 1;
+        heatmap.data[todayKeyNow] = newCount;
+        save();
+        const cell = grid.querySelector('[data-key="' + todayKeyNow + '"]');
+        if (cell) updateCellCount(cell, newCount);
+        else {
+          updateStatsDom();
+          if (card.classList.contains("card-collapsed")) {
+            const s = getHeatmapStats(heatmap, heatmap.viewRange == null ? "recent" : heatmap.viewRange);
+            if (collapsedSummary) { collapsedSummary.textContent = "总 " + s.total + " 次"; collapsedSummary.classList.remove("hidden"); }
+          }
+          const trendWrap = card.querySelector(".trend-chart-wrap");
+          if (trendWrap && !trendWrap.classList.contains("hidden")) refreshTrendChart();
+        }
+      });
+    }
 
     function commitTitle() {
       const val = titleInput.value.trim() || "未命名兴趣";
@@ -738,6 +888,7 @@
       const wrap = header.querySelector(".card-more-actions-wrap");
       const rgb = hexToRgb(heatmap.color);
       const presetsHtml = COLOR_PRESETS.map((hex) => `<button type="button" class="color-preset" style="background:${hex}" data-color="${hex}" aria-label="颜色 ${hex}"></button>`).join("");
+      const tagsList = (heatmap.tags || []).map((t) => escapeHtml(t)).join("");
       actionsDropdown.innerHTML =
         '<div class="card-actions-section">' +
         '<div class="card-actions-section-title"><span class="color-swatch-preview" style="background:' + heatmap.color + '" aria-hidden="true"></span>设置颜色</div>' +
@@ -746,6 +897,12 @@
         '<div class="color-picker-row"><span>G</span><input type="range" min="0" max="255" class="color-range color-g"></div>' +
         '<div class="color-picker-row"><span>B</span><input type="range" min="0" max="255" class="color-range color-b"></div>' +
         '<div class="color-picker-row"><span>#</span><input type="text" class="color-hex" maxlength="7" placeholder="#000000"></div>' +
+        '</div>' +
+        '<div class="card-actions-divider"></div>' +
+        '<div class="card-actions-section card-actions-tags">' +
+        '<div class="card-actions-section-title">标签</div>' +
+        '<div class="card-tags-list" data-tags-container></div>' +
+        '<div class="card-tag-add"><input type="text" class="card-tag-input" placeholder="添加标签" maxlength="12" /><button type="button" class="btn btn-ghost btn-small card-tag-add-btn">添加</button></div>' +
         '</div>' +
         '<div class="card-actions-divider"></div>' +
         '<button type="button" class="card-action-delete">删除</button>';
@@ -817,6 +974,54 @@
         });
       });
 
+      const tagsContainer = actionsDropdown.querySelector("[data-tags-container]");
+      const tagInput = actionsDropdown.querySelector(".card-tag-input");
+      const tagAddBtn = actionsDropdown.querySelector(".card-tag-add-btn");
+      function renderTagsInDropdown() {
+        if (!tagsContainer) return;
+        const tags = heatmap.tags || [];
+        tagsContainer.innerHTML = tags
+          .map(
+            (t) =>
+              '<span class="card-tag-pill">' +
+              escapeHtml(t) +
+              '<button type="button" class="card-tag-remove" data-tag="' +
+              escapeHtml(t) +
+              '" aria-label="移除">×</button></span>'
+          )
+          .join("");
+        tagsContainer.querySelectorAll(".card-tag-remove").forEach((btn) => {
+          btn.addEventListener("click", function () {
+            const tagVal = this.getAttribute("data-tag");
+            heatmap.tags = (heatmap.tags || []).filter((x) => x !== tagVal);
+            save();
+            renderTagsInDropdown();
+            renderTagFilterBar();
+          });
+        });
+      }
+      renderTagsInDropdown();
+      function addTag() {
+        const val = tagInput && tagInput.value.trim();
+        if (!val) return;
+        const tags = heatmap.tags || [];
+        if (tags.indexOf(val) >= 0) return;
+        heatmap.tags = tags.concat([val]);
+        save();
+        if (tagInput) tagInput.value = "";
+        renderTagsInDropdown();
+        renderTagFilterBar();
+      }
+      if (tagAddBtn) tagAddBtn.addEventListener("click", addTag);
+      if (tagInput) {
+        tagInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            addTag();
+          }
+        });
+      }
+
       moreBtn.addEventListener("click", function (e) {
         e.stopPropagation();
         document.querySelectorAll(".card-actions-dropdown").forEach((d) => {
@@ -874,16 +1079,81 @@
     document.addEventListener("keydown", onEsc);
   }
 
-  function renderAllHeatmaps() {
-    heatmapCards.innerHTML = "";
-    if (heatmaps.length === 0) {
-      mainPlaceholder.classList.remove("hidden");
-      heatmapCards.classList.add("hidden");
+  function getHeatmapsToRender() {
+    if (!selectedTag) return heatmaps;
+    return heatmaps.filter((h) => (h.tags || []).indexOf(selectedTag) >= 0);
+  }
+
+  function renderTagFilterBar() {
+    const bar = $("tagFilterBar");
+    const pillsEl = $("tagFilterPills");
+    if (!bar || !pillsEl) return;
+    const allTags = [];
+    heatmaps.forEach((h) => {
+      (h.tags || []).forEach((t) => {
+        if (t && allTags.indexOf(t) === -1) allTags.push(t);
+      });
+    });
+    if (allTags.length === 0) {
+      bar.classList.add("hidden");
       return;
     }
-    mainPlaceholder.classList.add("hidden");
-    heatmapCards.classList.remove("hidden");
-    heatmaps.forEach((h) => heatmapCards.appendChild(renderHeatmapCard(h)));
+    bar.classList.remove("hidden");
+    pillsEl.innerHTML = allTags
+      .map(
+        (t) =>
+          '<button type="button" class="tag-filter-pill" data-tag="' +
+          escapeHtml(t) +
+          '">' +
+          escapeHtml(t) +
+          "</button>"
+      )
+      .join("");
+    bar.querySelectorAll(".tag-filter-pill").forEach((btn) => {
+      const tag = btn.getAttribute("data-tag");
+      btn.classList.toggle("active", tag === selectedTag);
+      btn.addEventListener("click", function () {
+        selectedTag = tag === selectedTag ? "" : tag;
+        bar.querySelectorAll(".tag-filter-pill").forEach((b) => b.classList.toggle("active", b.getAttribute("data-tag") === selectedTag));
+        renderAllHeatmaps();
+      });
+    });
+    const allBtn = bar.querySelector('.tag-filter-pill[data-tag=""]');
+    if (allBtn) allBtn.classList.toggle("active", !selectedTag);
+  }
+
+  function updateFirstUseHint() {
+    const hintEl = $("firstUseHint");
+    if (!hintEl) return;
+    const toRender = getHeatmapsToRender();
+    const single = heatmaps.length === 1 && toRender.length === 1;
+    const total = single ? getHeatmapStats(toRender[0], toRender[0].viewRange == null ? "recent" : toRender[0].viewRange).total : 1;
+    if (single && total === 0) {
+      hintEl.classList.remove("hidden");
+      const firstCard = heatmapCards.querySelector(".heatmap-card");
+      if (firstCard) firstCard.classList.add("has-first-use-hint");
+    } else {
+      hintEl.classList.add("hidden");
+      heatmapCards.querySelectorAll(".has-first-use-hint").forEach((c) => c.classList.remove("has-first-use-hint"));
+    }
+  }
+
+  function renderAllHeatmaps() {
+    heatmapCards.innerHTML = "";
+    const toRender = getHeatmapsToRender();
+    if (toRender.length === 0) {
+      mainPlaceholder.classList.remove("hidden");
+      heatmapCards.classList.add("hidden");
+      const placeholderText = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-text]") : null;
+      if (placeholderText)
+        placeholderText.textContent = selectedTag ? "当前标签下暂无兴趣" : "点击「新建兴趣」开始记录";
+    } else {
+      mainPlaceholder.classList.add("hidden");
+      heatmapCards.classList.remove("hidden");
+      toRender.forEach((h) => heatmapCards.appendChild(renderHeatmapCard(h)));
+    }
+    renderTagFilterBar();
+    updateFirstUseHint();
   }
 
   function setupCardDragDrop() {
@@ -969,10 +1239,12 @@
     syncInProgress = loading;
     const btnPush = $("btnSyncPush");
     const btnPull = $("btnSyncPull");
+    const indicator = $("syncLoadingIndicator");
     if (btnPush) btnPush.disabled = loading;
     if (btnPull) btnPull.disabled = loading;
     if (btnPush) btnPush.classList.toggle("loading", loading);
     if (btnPull) btnPull.classList.toggle("loading", loading);
+    if (indicator) indicator.classList.toggle("hidden", !loading);
   }
 
   async function pushToGist() {
@@ -1008,13 +1280,14 @@
       console.log("[日迹 sync] pushToGist 响应", { status: res.status, ok: res.ok, message: data.message });
       if (!res.ok) {
         const msg = data.message || "推送失败 " + res.status;
-        const limit = res.headers.get("X-RateLimit-Limit");
-        const remaining = res.headers.get("X-RateLimit-Remaining");
-        const rateHint = limit === "60" ? "（当前按未认证限制 60 次/小时，请确认已在本页保存 Token）" : limit ? "（限额 " + limit + "/小时，剩余 " + remaining + "）" : "";
+        const rateHint = formatRateLimitHint(res);
         setSyncStatus(msg + rateHint, true);
-        lastSyncErrorMessage = "推送失败，请打开「云同步」查看" + (limit === "60" ? "。若为 rate limit，请确认 Token 已保存且在本域名下有效。" : "");
+        lastSyncErrorMessage = "推送失败，请打开「云同步」查看。限额用尽时可等待约 1 小时后重试。";
         updateSyncStatusText();
-        console.warn("[日迹 sync] 推送失败", msg, { limit, remaining });
+        const remaining = res.headers.get("X-RateLimit-Remaining");
+        const resetSec = res.headers.get("X-RateLimit-Reset");
+        if ((res.status === 403 || remaining === "0") && resetSec) pauseSyncPullUntilReset(parseInt(resetSec, 10));
+        console.warn("[日迹 sync] 推送失败", msg, rateHint);
         return;
       }
       lastSyncErrorMessage = null;
@@ -1064,14 +1337,14 @@
       const data = await res.json();
       if (!res.ok) {
         const msg = data.message || "拉取失败 " + res.status;
+        const rateHint = formatRateLimitHint(res);
+        setSyncStatus(msg + rateHint, true);
         const limit = res.headers.get("X-RateLimit-Limit");
         const remaining = res.headers.get("X-RateLimit-Remaining");
-        const rateHint = limit === "60" ? "（未认证 60次/小时，请确认已在本页保存 Token）" : limit ? "（限额 " + limit + "，剩余 " + remaining + "）" : "";
-        setSyncStatus(msg + rateHint, true);
-        if (limit === "60") {
-          lastSyncErrorMessage = "API 限制。请在本页打开「云同步」保存 Token（与本地/其他网址的 Token 需分别保存）";
-          updateSyncStatusText();
-        }
+        const resetSec = res.headers.get("X-RateLimit-Reset");
+        lastSyncErrorMessage = limit === "60" ? "API 限制。请在本页打开「云同步」保存 Token。" : "拉取失败，请打开「云同步」查看。限额用尽时可等待约 1 小时后重试。";
+        updateSyncStatusText();
+        if ((res.status === 403 || remaining === "0") && resetSec) pauseSyncPullUntilReset(parseInt(resetSec, 10));
         return false;
       }
       const file = data.files && data.files[GIST_FILENAME];
@@ -1157,11 +1430,12 @@
     URL.revokeObjectURL(a.href);
   }
   function exportCsv() {
-    const rows = [["id", "name", "color", "viewRange", "date", "count"]];
+    const rows = [["id", "name", "color", "viewRange", "tags", "date", "count"]];
     heatmaps.forEach((h) => {
       const keys = Object.keys(h.data || {}).sort();
-      if (keys.length === 0) rows.push([h.id, h.name, h.color, String(h.viewRange), "", "0"]);
-      else keys.forEach((key) => rows.push([h.id, h.name, h.color, String(h.viewRange), key, String(h.data[key])]));
+      const tagsStr = (h.tags || []).join(";");
+      if (keys.length === 0) rows.push([h.id, h.name, h.color, String(h.viewRange), tagsStr, "", "0"]);
+      else keys.forEach((key) => rows.push([h.id, h.name, h.color, String(h.viewRange), tagsStr, key, String(h.data[key])]));
     });
     const csv = rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
@@ -1170,6 +1444,102 @@
     a.download = "habits-tracker-" + new Date().toISOString().slice(0, 10) + ".csv";
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  function normalizeImportedHeatmap(h) {
+    if (!h.id) h.id = uuid();
+    if (h.collapsed == null) h.collapsed = false;
+    if (!Array.isArray(h.tags)) h.tags = [];
+    if (!h.data || typeof h.data !== "object") h.data = {};
+    return h;
+  }
+
+  function importJson(text) {
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      return false;
+    }
+    if (!Array.isArray(data)) return false;
+    const normalized = data.map(normalizeImportedHeatmap);
+    const mode = heatmaps.length === 0 ? "replace" : confirm("当前已有数据。选择「确定」合并到当前数据，选择「取消」则用导入数据覆盖。") ? "merge" : "replace";
+    if (mode === "replace") heatmaps = normalized;
+    else heatmaps = heatmaps.concat(normalized);
+    save();
+    renderAllHeatmaps();
+    return true;
+  }
+
+  function importCsv(text) {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 1) return false;
+    const parseRow = (line) => {
+      const out = [];
+      let inQuote = false;
+      let cell = "";
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+          if (inQuote && line[i + 1] === '"') {
+            cell += '"';
+            i++;
+          } else inQuote = !inQuote;
+        } else if (!inQuote && c === ",") {
+          out.push(cell);
+          cell = "";
+        } else cell += c;
+      }
+      out.push(cell);
+      return out;
+    };
+    const header = parseRow(lines[0]);
+    const idIdx = header.indexOf("id");
+    const nameIdx = header.indexOf("name");
+    const colorIdx = header.indexOf("color");
+    const viewRangeIdx = header.indexOf("viewRange");
+    const tagsIdx = header.indexOf("tags");
+    const dateIdx = header.indexOf("date");
+    const countIdx = header.indexOf("count");
+    if (idIdx < 0 || nameIdx < 0 || dateIdx < 0 || countIdx < 0) return false;
+    const byId = {};
+    for (let i = 1; i < lines.length; i++) {
+      const row = parseRow(lines[i]);
+      const id = row[idIdx] || uuid();
+      if (!byId[id]) {
+        byId[id] = {
+          id,
+          name: row[nameIdx] || "未命名",
+          color: row[colorIdx] || "#216e39",
+          viewRange: row[viewRangeIdx] ? (isNaN(Number(row[viewRangeIdx])) ? row[viewRangeIdx] : Number(row[viewRangeIdx])) : new Date().getFullYear(),
+          tags: row[tagsIdx] ? row[tagsIdx].split(";").filter(Boolean) : [],
+          data: {},
+          collapsed: false,
+        };
+      }
+      const date = row[dateIdx];
+      const count = parseInt(row[countIdx], 10) || 0;
+      if (date) byId[id].data[date] = count;
+    }
+    const normalized = Object.values(byId).map(normalizeImportedHeatmap);
+    const mode = heatmaps.length === 0 ? "replace" : confirm("当前已有数据。选择「确定」合并，选择「取消」覆盖。") ? "merge" : "replace";
+    if (mode === "replace") heatmaps = normalized;
+    else heatmaps = heatmaps.concat(normalized);
+    save();
+    renderAllHeatmaps();
+    return true;
+  }
+
+  function importFromFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      const text = reader.result;
+      const isCsv = /\.csv$/i.test(file.name);
+      const ok = isCsv ? importCsv(text) : importJson(text);
+      if (!ok) alert("导入失败，请检查文件格式（JSON 需为数组，CSV 需含 id,name,date,count 列）");
+    };
+    reader.readAsText(file, "UTF-8");
   }
   function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme || "light");
@@ -1196,6 +1566,16 @@
       exportDropdown.addEventListener("click", function (e) { e.stopPropagation(); });
       $("btnExportJson") && $("btnExportJson").addEventListener("click", function () { exportJson(); exportDropdown.classList.add("hidden"); });
       $("btnExportCsv") && $("btnExportCsv").addEventListener("click", function () { exportCsv(); exportDropdown.classList.add("hidden"); });
+    }
+    const btnImport = $("btnImport");
+    const importFileInput = $("importFileInput");
+    if (btnImport && importFileInput) {
+      btnImport.addEventListener("click", function () { importFileInput.click(); });
+      importFileInput.addEventListener("change", function () {
+        const file = importFileInput.files && importFileInput.files[0];
+        if (file) importFromFile(file);
+        importFileInput.value = "";
+      });
     }
     const btnTheme = $("btnTheme");
     if (btnTheme) btnTheme.addEventListener("click", toggleTheme);
@@ -1261,6 +1641,11 @@
   }
 
   async function init() {
+    const skeleton = $("mainLoadingSkeleton");
+    if (skeleton) skeleton.classList.remove("hidden");
+    if (mainPlaceholder) mainPlaceholder.classList.add("hidden");
+    if (heatmapCards) heatmapCards.classList.add("hidden");
+
     load();
     const savedTheme = localStorage.getItem(THEME_KEY);
     applyTheme(savedTheme || "light");
@@ -1281,8 +1666,11 @@
     setupCardDragDrop();
     bindEvents();
     updateSyncStatusText();
+    if (skeleton) skeleton.classList.add("hidden");
     const placeholderText = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-text]") : null;
     if (placeholderText) placeholderText.textContent = "点击「新建兴趣」开始记录";
+    const placeholderSub = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-sub]") : null;
+    if (placeholderSub) placeholderSub.textContent = "点击「新建兴趣」开始记录你的第一个习惯";
     const firstCard = heatmapCards && heatmapCards.querySelector(".heatmap-card");
     if (firstCard && heatmaps.length <= 1) {
       const hint = firstCard.querySelector(".heatmap-hint");

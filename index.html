@@ -19,6 +19,7 @@
         <h1 class="logo"><img src="favicon.svg" alt="" class="logo-icon" width="28" height="28" />日迹</h1>
         <div class="topbar-actions" id="topbarActions">
           <span class="sync-status-text" id="syncStatusText" aria-live="polite" title="云同步状态"></span>
+          <span class="sync-loading-indicator hidden" id="syncLoadingIndicator" aria-hidden="true"></span>
           <button type="button" class="btn btn-ghost btn-icon-only" id="btnTheme" title="切换浅色/深色主题" aria-label="切换浅色/深色主题">🌓</button>
           <div class="export-wrap">
             <button type="button" class="btn btn-ghost" id="btnExport" title="导出数据">导出</button>
@@ -26,6 +27,10 @@
               <button type="button" class="export-option" id="btnExportJson">导出 JSON</button>
               <button type="button" class="export-option" id="btnExportCsv">导出 CSV</button>
             </div>
+          </div>
+          <div class="import-wrap">
+            <button type="button" class="btn btn-ghost" id="btnImport" title="导入数据">导入</button>
+            <input type="file" class="import-file-input hidden" id="importFileInput" accept=".json,.csv,application/json,text/csv" />
           </div>
           <button type="button" class="btn btn-ghost" id="btnSync" title="云同步">云同步</button>
           <button type="button" class="btn btn-primary btn-new" id="btnNew" title="新建兴趣（N）">
@@ -70,11 +75,28 @@
       </div>
     </div>
     <main class="main" id="main" tabindex="-1">
+      <div class="main-loading-skeleton hidden" id="mainLoadingSkeleton" aria-hidden="true">
+        <div class="skeleton-card">
+          <div class="skeleton-header"></div>
+          <div class="skeleton-stats"></div>
+          <div class="skeleton-grid"></div>
+        </div>
+      </div>
       <div class="main-placeholder" id="mainPlaceholder">
         <span class="placeholder-icon" aria-hidden="true"></span>
         <p data-placeholder-text>加载中…</p>
+        <p class="placeholder-sub" data-placeholder-sub>点击「新建兴趣」开始记录你的第一个习惯</p>
+      </div>
+      <div class="tag-filter-bar hidden" id="tagFilterBar">
+        <span class="tag-filter-label">标签：</span>
+        <button type="button" class="tag-filter-pill active" data-tag="">全部</button>
+        <div class="tag-filter-pills" id="tagFilterPills"></div>
       </div>
       <div class="heatmap-cards" id="heatmapCards" role="list"></div>
+      <div class="first-use-hint hidden" id="firstUseHint">
+        <span class="first-use-hint-arrow">↓</span>
+        <p>点击任意格子开始第一次记录</p>
+      </div>
     </main>
   </div>
   <div class="confirm-modal hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalMessage">
