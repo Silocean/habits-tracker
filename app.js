@@ -17,6 +17,8 @@
   let heatmaps = [];
   let lastSyncedSnapshot = null;
   let syncInProgress = false;
+  let autoPushTimer = null;
+  const AUTO_PUSH_DELAY_MS = 3000;
 
   const $ = (id) => document.getElementById(id);
   const mainPlaceholder = $("mainPlaceholder");
@@ -48,6 +50,16 @@
   function save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(heatmaps));
     updateSyncStatusText();
+    scheduleAutoPush();
+  }
+
+  function scheduleAutoPush() {
+    if (autoPushTimer) clearTimeout(autoPushTimer);
+    if (!getSyncToken()) return;
+    autoPushTimer = setTimeout(function () {
+      autoPushTimer = null;
+      pushToGist();
+    }, AUTO_PUSH_DELAY_MS);
   }
 
   function isDirty() {
@@ -978,7 +990,8 @@
     }
   }
 
-  async function pullFromGist() {
+  async function pullFromGist(opts) {
+    const { skipDirtyCheck = false } = opts || {};
     const token = ($("syncToken") && $("syncToken").value.trim()) || getSyncToken();
     const gistId = getGistId();
     if (!token) {
@@ -989,7 +1002,7 @@
       setSyncStatus("请先执行一次「推送到云端」以创建 Gist", true);
       return;
     }
-    if (isDirty() && !confirm("本地有未同步的更改，拉取将覆盖本地数据。是否继续？")) return;
+    if (!skipDirtyCheck && isDirty() && !confirm("本地有未同步的更改，拉取将覆盖本地数据。是否继续？")) return;
     setSyncLoading(true);
     setSyncStatus("拉取中…");
     try {
@@ -1145,7 +1158,6 @@
     const syncPanel = $("syncPanel");
     const syncClose = $("syncClose");
     if (btnSync) btnSync.addEventListener("click", openSyncPanel);
-    if (syncStatusText) syncStatusText.addEventListener("click", openSyncPanel);
     if (syncClose) syncClose.addEventListener("click", closeSyncPanel);
     if (syncPanel) {
       syncPanel.addEventListener("click", function (e) {
@@ -1186,7 +1198,7 @@
     if (btnPull) btnPull.addEventListener("click", pullFromGist);
   }
 
-  function init() {
+  async function init() {
     load();
     const savedTheme = localStorage.getItem(THEME_KEY);
     applyTheme(savedTheme || "light");
@@ -1194,11 +1206,16 @@
       heatmaps = [createHeatmap("示例兴趣", "#216e39")];
       save();
     }
+    if (getSyncToken() && getGistId()) {
+      try {
+        await pullFromGist({ skipDirtyCheck: true });
+      } catch (_) {}
+    }
     renderAllHeatmaps();
     setupCardDragDrop();
     bindEvents();
     updateSyncStatusText();
-    const placeholderText = mainPlaceholder ? mainPlaceholder.querySelector("p") : null;
+    const placeholderText = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-text]") : null;
     if (placeholderText) placeholderText.textContent = "点击「新建兴趣」开始记录";
     const firstCard = heatmapCards && heatmapCards.querySelector(".heatmap-card");
     if (firstCard && heatmaps.length <= 1) {

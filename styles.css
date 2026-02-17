@@ -145,20 +145,9 @@ body {
   font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
-  cursor: pointer;
-  padding: 6px 8px;
-  border-radius: var(--radius);
-}
-.sync-status-text:hover {
-  color: var(--text);
-  background: rgba(31, 35, 40, 0.06);
 }
 .sync-status-text:empty {
-  cursor: default;
-  padding: 0;
-}
-.sync-status-text:empty:hover {
-  background: transparent;
+  display: none;
 }
 .sync-status-text.sync-dirty {
   color: var(--accent);

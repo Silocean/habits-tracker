@@ -18,7 +18,7 @@
       <div class="topbar-inner">
         <h1 class="logo"><img src="favicon.svg" alt="" class="logo-icon" width="28" height="28" />日迹</h1>
         <div class="topbar-actions" id="topbarActions">
-          <span class="sync-status-text" id="syncStatusText" aria-live="polite" title="点击打开云同步"></span>
+          <span class="sync-status-text" id="syncStatusText" aria-live="polite" title="云同步状态"></span>
           <button type="button" class="btn btn-ghost btn-icon-only" id="btnTheme" title="切换浅色/深色主题" aria-label="切换浅色/深色主题">🌓</button>
           <div class="export-wrap">
             <button type="button" class="btn btn-ghost" id="btnExport" title="导出数据">导出</button>
@@ -72,7 +72,7 @@
     <main class="main" id="main" tabindex="-1">
       <div class="main-placeholder" id="mainPlaceholder">
         <span class="placeholder-icon" aria-hidden="true"></span>
-        <p>点击「新建兴趣」开始记录</p>
+        <p data-placeholder-text>加载中…</p>
       </div>
       <div class="heatmap-cards" id="heatmapCards" role="list"></div>
     </main>
