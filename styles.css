@@ -1,0 +1,500 @@
+/* ===== 基础与变量（浅色主题）===== */
+:root {
+  --bg-page: #f5f7f9;
+  --bg-card: #ffffff;
+  --border: #e1e4e8;
+  --border-light: #eaecef;
+  --text: #1f2328;
+  --text-muted: #656d76;
+  --accent: #0969da;
+  --accent-soft: rgba(9, 105, 218, 0.08);
+  --danger: #cf222e;
+  --danger-soft: rgba(207, 34, 46, 0.08);
+  --cell-empty: #ebedf0;
+  --cell-border: #d0d7de;
+  --cell-size: 16px;
+  --cell-gap: 5px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px rgba(31, 35, 40, 0.04);
+  --shadow-md: 0 4px 12px rgba(31, 35, 40, 0.08);
+  --font: "Noto Sans SC", -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg-page);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* ===== 滚动条 ===== */
+/* Firefox */
+.main,
+.heatmap-grid-wrap {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* WebKit (Chrome, Safari, Edge) */
+.main::-webkit-scrollbar,
+.heatmap-grid-wrap::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.main::-webkit-scrollbar-track,
+.heatmap-grid-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main::-webkit-scrollbar-thumb,
+.heatmap-grid-wrap::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.main::-webkit-scrollbar-thumb:hover,
+.heatmap-grid-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.main::-webkit-scrollbar-corner,
+.heatmap-grid-wrap::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ===== 布局 ===== */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topbar {
+  background: var(--bg-page);
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 28px;
+}
+
+.logo {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.btn {
+  font-family: var(--font);
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition: filter 0.2s, box-shadow 0.2s;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 2px 8px rgba(9, 105, 218, 0.25);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  transition: background 0.2s, color 0.2s;
+}
+
+.btn-ghost:hover {
+  color: var(--text);
+  background: rgba(31, 35, 40, 0.06);
+}
+
+.btn-delete {
+  color: var(--text-muted);
+}
+
+.btn-delete:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.btn-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* ===== 主内容区 ===== */
+.main {
+  flex: 1;
+  padding: 32px 28px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.main-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 360px;
+  color: var(--text-muted);
+  font-size: 15px;
+  gap: 12px;
+  text-align: center;
+}
+
+.main-placeholder .placeholder-icon {
+  display: block;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--border-light);
+  flex-shrink: 0;
+}
+
+.main-placeholder.hidden,
+.heatmap-cards.hidden {
+  display: none !important;
+}
+
+.heatmap-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.heatmap-card {
+  width: 100%;
+}
+
+.heatmap-card .heatmap-wrap {
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.heatmap-card .heatmap-wrap:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* ===== 热力图头部（在卡片内部）===== */
+.heatmap-wrap .heatmap-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: -20px -20px 20px -20px;
+  padding: 18px 20px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, transparent 100%);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.heatmap-title-wrap {
+  flex: 1;
+  min-width: 160px;
+  position: relative;
+}
+
+.heatmap-title-display {
+  font-family: var(--font);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-block;
+  padding: 10px 0;
+  min-height: 1.25em;
+  transition: color 0.2s;
+  border-radius: var(--radius);
+}
+
+.heatmap-title-display:hover {
+  color: var(--accent);
+}
+
+.heatmap-title-display.hidden {
+  display: none;
+}
+
+.heatmap-title-edit {
+  font-family: var(--font);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  outline: none;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.heatmap-title-edit.hidden {
+  display: none;
+}
+
+.heatmap-title-edit:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-label,
+.color-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.range-select {
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  cursor: pointer;
+  min-width: 100px;
+}
+
+.range-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.color-input {
+  width: 36px;
+  height: 36px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  cursor: pointer;
+}
+
+/* ===== 热力图区域 ===== */
+.heatmap-wrap {
+  width: fit-content;
+  max-width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.legend-blocks {
+  display: flex;
+  gap: 2px;
+}
+
+.legend-blocks span {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.heatmap-container {
+  display: flex;
+  gap: 8px;
+}
+
+.heatmap-weekdays {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 0 4px 0 0;
+}
+
+.heatmap-weekdays span {
+  height: var(--cell-size);
+  line-height: var(--cell-size);
+}
+
+.heatmap-weekday-spacer {
+  height: var(--cell-size);
+  margin-bottom: var(--cell-gap);
+}
+
+.heatmap-grid-wrap {
+  overflow-x: auto;
+  padding: 0 8px 4px 8px;
+}
+
+.heatmap-months {
+  position: relative;
+  height: var(--cell-size);
+  width: calc(53 * (var(--cell-size) + var(--cell-gap)) - var(--cell-gap) + 6px);
+  min-width: calc(53 * (var(--cell-size) + var(--cell-gap)) - var(--cell-gap) + 6px);
+  margin-bottom: var(--cell-gap);
+  padding-left: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.heatmap-month-label {
+  position: absolute;
+  top: 0;
+  line-height: var(--cell-size);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-rows: repeat(7, var(--cell-size));
+  grid-auto-flow: column;
+  grid-auto-columns: var(--cell-size);
+  gap: var(--cell-gap);
+  width: max-content;
+  padding: 3px;
+  overflow: hidden;
+}
+
+.heatmap-cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.1s;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.15);
+  filter: brightness(1.2);
+}
+
+.heatmap-cell.empty {
+  background: var(--cell-empty);
+  border: 1px solid var(--cell-border);
+}
+
+.heatmap-cell.level-0 {
+  background: var(--cell-empty);
+  border: 1px solid var(--cell-border);
+}
+
+.heatmap-cell.outside-year {
+  opacity: 0.35;
+}
+
+.heatmap-cell.heatmap-cell-today {
+  box-shadow: 0 0 0 1px var(--text-muted);
+  position: relative;
+  z-index: 1;
+}
+
+.heatmap-hint {
+  margin: 14px 0 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+
+/* ===== 工具提示 ===== */
+.tooltip {
+  position: fixed;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text);
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(31, 35, 40, 0.12);
+  white-space: nowrap;
+}
+
+.tooltip.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* ===== 格子右键菜单 ===== */
+.cell-menu {
+  position: fixed;
+  z-index: 1001;
+  min-width: 120px;
+  padding: 4px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+.cell-menu-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cell-menu-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.cell-menu-btn:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}

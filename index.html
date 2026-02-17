@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>兴趣记录 · 热力图</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <h1 class="logo">兴趣记录</h1>
+        <button type="button" class="btn btn-primary btn-new" id="btnNew">
+          <span class="btn-icon">+</span> 新建兴趣
+        </button>
+      </div>
+    </header>
+    <main class="main">
+      <div class="main-placeholder" id="mainPlaceholder">
+        <span class="placeholder-icon" aria-hidden="true"></span>
+        <p>点击「新建兴趣」开始记录</p>
+      </div>
+      <div class="heatmap-cards" id="heatmapCards"></div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
