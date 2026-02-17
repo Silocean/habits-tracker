@@ -64,11 +64,17 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(heatmaps));
     updateSyncStatusText();
     scheduleAutoPush();
+    console.log("[日迹 sync] save() 已调用");
   }
 
   function scheduleAutoPush() {
     if (autoPushTimer) clearTimeout(autoPushTimer);
-    if (!getSyncToken()) return;
+    const token = getSyncToken();
+    if (!token) {
+      console.log("[日迹 sync] scheduleAutoPush 跳过：未保存 Token（请在云同步中保存）");
+      return;
+    }
+    console.log("[日迹 sync] scheduleAutoPush 已安排，约 3 秒后推送");
     autoPushTimer = setTimeout(function () {
       autoPushTimer = null;
       pushToGist();
@@ -964,13 +970,14 @@
 
   async function pushToGist() {
     const token = ($("syncToken") && $("syncToken").value.trim()) || getSyncToken();
+    const gistId = getGistId();
+    console.log("[日迹 sync] pushToGist() 开始", { hasToken: !!token, hasGistId: !!gistId });
     if (!token) {
       setSyncStatus("请先填写并保存 Token", true);
       return;
     }
     setSyncLoading(true);
     setSyncStatus("推送中…");
-    const gistId = getGistId();
     const body = JSON.stringify(heatmaps);
     const opts = {
       method: gistId ? "PATCH" : "POST",
@@ -991,11 +998,13 @@
     try {
       const res = await fetch(url, opts);
       const data = await res.json();
+      console.log("[日迹 sync] pushToGist 响应", { status: res.status, ok: res.ok, message: data.message });
       if (!res.ok) {
         const msg = data.message || "推送失败 " + res.status;
         setSyncStatus(msg, true);
         lastSyncErrorMessage = "推送失败，请打开「云同步」查看";
         updateSyncStatusText();
+        console.warn("[日迹 sync] 推送失败", msg);
         return;
       }
       lastSyncErrorMessage = null;
@@ -1009,7 +1018,9 @@
       localStorage.setItem(SYNC_LAST_SNAPSHOT_KEY, body);
       updateSyncStatusText();
       setSyncStatus("已推送到云端 " + new Date().toLocaleTimeString("zh-CN"));
+      console.log("[日迹 sync] 推送成功");
     } catch (err) {
+      console.warn("[日迹 sync] 推送异常", err);
       setSyncStatus("网络错误：" + (err.message || "未知"), true);
       lastSyncErrorMessage = "推送失败，请打开「云同步」查看";
       updateSyncStatusText();
@@ -1240,6 +1251,7 @@
       save();
     }
     const hasSyncConfig = getSyncToken() && getGistId();
+    console.log("[日迹 sync] 页面加载完成", { hasToken: !!getSyncToken(), hasGistId: !!getGistId(), hasSyncConfig });
     if (hasSyncConfig) {
       const ok = await pullFromGist({ skipDirtyCheck: true });
       if (!ok) {
