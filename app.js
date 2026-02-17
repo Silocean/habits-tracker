@@ -1270,9 +1270,6 @@
       const hint = firstCard.querySelector(".heatmap-hint");
       if (hint) hint.textContent = "点击格子开始记录 · Shift+点击减少 · 右键菜单可清零";
     }
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js").catch(() => {});
-    }
     startSyncPullInterval();
   }
 
