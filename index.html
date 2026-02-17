@@ -88,6 +88,12 @@
       </div>
     </div>
   </div>
-  <script src="app.js"></script>
+  <script>
+    (function () {
+      var s = document.createElement("script");
+      s.src = "app.js?t=" + Date.now();
+      document.body.appendChild(s);
+    })();
+  </script>
 </body>
 </html>
