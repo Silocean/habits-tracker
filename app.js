@@ -1,8 +1,12 @@
 (function () {
   const STORAGE_KEY = "habits-tracker-heatmaps";
+  const SYNC_TOKEN_KEY = "habits-tracker-sync-token";
+  const GIST_ID_KEY = "habits-tracker-gist-id";
+  const GIST_FILENAME = "habits-tracker.json";
+  const GIST_API = "https://api.github.com/gists";
   const WEEKS = 53;
   const DAYS_PER_WEEK = 7;
-  const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
+  const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
   const CELL_PX = 16;
   const GAP_PX = 5;
 
@@ -42,13 +46,14 @@
     return heatmaps.find((h) => h.id === id);
   }
 
+  /** 返回该周周一 0 点（周从周一开始） */
   function getWeekStart(d) {
     const day = d.getDay();
-    const diff = d.getDate() - day;
-    const sunday = new Date(d);
-    sunday.setDate(diff);
-    sunday.setHours(0, 0, 0, 0);
-    return sunday;
+    const daysFromMonday = (day + 6) % 7;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - daysFromMonday);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
   }
 
   function getGridDates(viewRange) {
@@ -123,7 +128,7 @@
       id: uuid(),
       name,
       color,
-      viewRange: "recent",
+      viewRange: new Date().getFullYear(),
       data: {},
     };
   }
@@ -343,36 +348,45 @@
       heatmap.data[key] = newCount;
       if (newCount === 0) delete heatmap.data[key];
       save();
-      cell.dataset.count = newCount;
-      const newLevel = getLevel(newCount);
+      const yearView = typeof heatmap.viewRange === "number";
+      const showAsEmpty = yearView && !inYear;
+      const displayCount = showAsEmpty ? 0 : newCount;
+      const displayLevel = showAsEmpty ? 0 : getLevel(newCount);
+      cell.dataset.count = displayCount;
       const isToday = cell.dataset.isToday === "1";
-      cell.className = "heatmap-cell level-" + newLevel + (inYear ? "" : " outside-year") + (isToday ? " heatmap-cell-today" : "");
-      if (newLevel === 0) {
+      cell.className = "heatmap-cell level-" + displayLevel + (inYear ? "" : " outside-year") + (isToday ? " heatmap-cell-today" : "");
+      if (displayLevel === 0) {
         cell.classList.add("empty");
         cell.style.background = "";
       } else {
-        cell.style.background = colors[newLevel];
+        cell.style.background = colors[displayLevel];
       }
       refreshTooltipForCell(cell);
     }
 
     const todayKey = formatDateKey(new Date());
+    const isYearView = typeof viewRange === "number";
     gridDates.forEach(({ date, row, col, inYear }) => {
       const key = formatDateKey(date);
       const isToday = key === todayKey;
       const count = heatmap.data[key] || 0;
       const level = getLevel(count);
+      const showAsEmpty = isYearView && !inYear;
+      const displayLevel = showAsEmpty ? 0 : level;
+      const displayCount = showAsEmpty ? 0 : count;
+      /* 非当年格子仍占位一格，仅不显示数据，不删不挪保证位置不变 */
       const cell = document.createElement("div");
-      cell.className = "heatmap-cell level-" + level + (inYear ? "" : " outside-year") + (isToday ? " heatmap-cell-today" : "");
-      cell.style.background = level === 0 ? "" : colors[level];
-      if (level === 0) cell.classList.add("empty");
+      cell.className = "heatmap-cell level-" + displayLevel + (inYear ? "" : " outside-year") + (isToday ? " heatmap-cell-today" : "");
+      cell.style.background = displayLevel === 0 ? "" : colors[displayLevel];
+      if (displayLevel === 0) cell.classList.add("empty");
       cell.dataset.key = key;
-      cell.dataset.count = count;
+      cell.dataset.count = displayCount;
       cell.dataset.inYear = inYear ? "1" : "0";
       cell.dataset.isToday = isToday ? "1" : "0";
-      cell.setAttribute("aria-label", `${key} ${count}次${isToday ? "（今天）" : ""}`);
+      cell.setAttribute("aria-label", `${key} ${displayCount}次${isToday ? "（今天）" : ""}${showAsEmpty ? "（非当年）" : ""}`);
 
       cell.addEventListener("click", (e) => {
+        if (showAsEmpty) return;
         const cur = (heatmap.data[key] || 0) | 0;
         if (e.shiftKey) {
           if (cur <= 0) return;
@@ -384,6 +398,7 @@
 
       cell.addEventListener("contextmenu", (e) => {
         e.preventDefault();
+        if (showAsEmpty) return;
         const cur = (heatmap.data[key] || 0) | 0;
         showCellMenu(e, cell, cur, () => updateCellCount(cell, Math.max(0, cur - 1)), () => updateCellCount(cell, 0));
       });
@@ -461,7 +476,6 @@
       heatmaps.splice(idx, 1);
       save();
       renderAllHeatmaps();
-      renderList();
     });
 
     return card;
@@ -488,8 +502,172 @@
     if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function getSyncToken() {
+    return localStorage.getItem(SYNC_TOKEN_KEY) || "";
+  }
+  function setSyncToken(token) {
+    if (token) localStorage.setItem(SYNC_TOKEN_KEY, token);
+    else localStorage.removeItem(SYNC_TOKEN_KEY);
+  }
+  function getGistId() {
+    return localStorage.getItem(GIST_ID_KEY) || "";
+  }
+  function setGistId(id) {
+    if (id) localStorage.setItem(GIST_ID_KEY, id);
+    else localStorage.removeItem(GIST_ID_KEY);
+  }
+
+  function setSyncStatus(message, isError) {
+    const el = $("syncStatus");
+    if (!el) return;
+    el.textContent = message;
+    el.classList.toggle("error", !!isError);
+    el.classList.toggle("success", !isError && message);
+  }
+
+  async function pushToGist() {
+    const token = ($("syncToken") && $("syncToken").value.trim()) || getSyncToken();
+    if (!token) {
+      setSyncStatus("请先填写并保存 Token", true);
+      return;
+    }
+    setSyncStatus("推送中…");
+    const gistId = getGistId();
+    const body = JSON.stringify(heatmaps);
+    const opts = {
+      method: gistId ? "PATCH" : "POST",
+      headers: {
+        Accept: "application/vnd.github.v3+json",
+        Authorization: "token " + token,
+        "Content-Type": "application/json",
+      },
+      body: gistId
+        ? JSON.stringify({ files: { [GIST_FILENAME]: { content: body } } })
+        : JSON.stringify({
+            description: "兴趣记录热力图",
+            public: false,
+            files: { [GIST_FILENAME]: { content: body } },
+          }),
+    };
+    const url = gistId ? GIST_API + "/" + gistId : GIST_API;
+    try {
+      const res = await fetch(url, opts);
+      const data = await res.json();
+      if (!res.ok) {
+        setSyncStatus(data.message || "推送失败 " + res.status, true);
+        return;
+      }
+      if (data.id) {
+        setGistId(data.id);
+        const gistDisplay = $("syncGistIdDisplay");
+        if (gistDisplay) gistDisplay.value = data.id;
+      }
+      setSyncStatus("已推送到云端 " + new Date().toLocaleTimeString("zh-CN"));
+    } catch (err) {
+      setSyncStatus("网络错误：" + (err.message || "未知"), true);
+    }
+  }
+
+  async function pullFromGist() {
+    const token = ($("syncToken") && $("syncToken").value.trim()) || getSyncToken();
+    const gistId = getGistId();
+    if (!token) {
+      setSyncStatus("请先填写并保存 Token", true);
+      return;
+    }
+    if (!gistId) {
+      setSyncStatus("请先执行一次「推送到云端」以创建 Gist", true);
+      return;
+    }
+    setSyncStatus("拉取中…");
+    try {
+      const res = await fetch(GIST_API + "/" + gistId, {
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+          Authorization: "token " + token,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSyncStatus(data.message || "拉取失败 " + res.status, true);
+        return;
+      }
+      const file = data.files && data.files[GIST_FILENAME];
+      if (!file || file.content == null) {
+        setSyncStatus("Gist 中未找到 " + GIST_FILENAME, true);
+        return;
+      }
+      const parsed = JSON.parse(file.content);
+      if (!Array.isArray(parsed)) {
+        setSyncStatus("数据格式无效", true);
+        return;
+      }
+      heatmaps = parsed;
+      save();
+      renderAllHeatmaps();
+      setSyncStatus("已从云端拉取 " + new Date().toLocaleTimeString("zh-CN"));
+    } catch (err) {
+      setSyncStatus("网络错误：" + (err.message || "未知"), true);
+    }
+  }
+
+  function openSyncPanel() {
+    const panel = $("syncPanel");
+    const tokenInput = $("syncToken");
+    const gistDisplay = $("syncGistIdDisplay");
+    const gistBind = $("syncGistIdBind");
+    if (panel) panel.classList.remove("hidden");
+    if (tokenInput && getSyncToken()) tokenInput.placeholder = "已保存（留空不修改）";
+    if (gistDisplay) gistDisplay.value = getGistId() || "";
+    if (gistBind) gistBind.value = "";
+  }
+  function closeSyncPanel() {
+    const panel = $("syncPanel");
+    if (panel) panel.classList.add("hidden");
+  }
+
   function bindEvents() {
     $("btnNew").addEventListener("click", addNewHeatmap);
+
+    const btnSync = $("btnSync");
+    const syncPanel = $("syncPanel");
+    const syncClose = $("syncClose");
+    if (btnSync) btnSync.addEventListener("click", openSyncPanel);
+    if (syncClose) syncClose.addEventListener("click", closeSyncPanel);
+    if (syncPanel) {
+      syncPanel.addEventListener("click", function (e) {
+        if (e.target === syncPanel) closeSyncPanel();
+      });
+    }
+    const btnSaveToken = $("btnSyncSaveToken");
+    const btnPush = $("btnSyncPush");
+    const btnPull = $("btnSyncPull");
+    if (btnSaveToken) {
+      btnSaveToken.addEventListener("click", function () {
+        const input = $("syncToken");
+        const v = input && input.value.trim();
+        setSyncToken(v || null);
+        setSyncStatus(v ? "Token 已保存" : "Token 已清除");
+      });
+    }
+    const btnBindGist = $("btnSyncBindGist");
+    if (btnBindGist) {
+      btnBindGist.addEventListener("click", function () {
+        const input = $("syncGistIdBind");
+        const id = input && input.value.trim();
+        if (!id) {
+          setSyncStatus("请先粘贴 Gist ID", true);
+          return;
+        }
+        setGistId(id);
+        if (input) input.value = "";
+        const gistDisplay = $("syncGistIdDisplay");
+        if (gistDisplay) gistDisplay.value = id;
+        setSyncStatus("已绑定 Gist，可点击「从云端拉取」");
+      });
+    }
+    if (btnPush) btnPush.addEventListener("click", pushToGist);
+    if (btnPull) btnPull.addEventListener("click", pullFromGist);
   }
 
   function init() {

@@ -93,6 +93,12 @@ body {
   padding: 16px 28px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .logo {
   margin: 0;
   font-size: 1.35rem;
@@ -427,7 +433,16 @@ body {
 }
 
 .heatmap-cell.outside-year {
-  opacity: 0.35;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--bg-card) !important;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+
+.heatmap-cell.outside-year:hover {
+  transform: none;
+  filter: none;
 }
 
 .heatmap-cell.heatmap-cell-today {
@@ -497,4 +512,156 @@ body {
 .cell-menu-btn:disabled {
   color: var(--text-muted);
   cursor: not-allowed;
+}
+
+/* ===== 云同步面板 ===== */
+.sync-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.sync-panel.hidden {
+  display: none;
+}
+
+.sync-panel-inner {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.sync-title {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sync-desc {
+  margin: 0 0 16px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.sync-desc a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.sync-desc a:hover {
+  text-decoration: underline;
+}
+
+.sync-label {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.sync-label span {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.sync-input {
+  width: 100%;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg-page);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  box-sizing: border-box;
+}
+
+.sync-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.sync-gist-id-wrap {
+  margin-bottom: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-light);
+}
+
+.sync-label-inline .sync-input {
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.sync-input-id {
+  background: var(--bg-page);
+  color: var(--text-muted);
+}
+
+.sync-hint {
+  margin: 6px 0 10px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.btn-small {
+  padding: 6px 10px;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.sync-status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  min-height: 1.4em;
+}
+
+.sync-status.success {
+  color: #1a7f37;
+}
+
+.sync-status.error {
+  color: var(--danger);
+}
+
+.sync-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: color 0.2s, background 0.2s;
+}
+
+.sync-close:hover {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.06);
 }
