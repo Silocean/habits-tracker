@@ -3,60 +3,78 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>兴趣记录 · 热力图</title>
+  <title>日迹</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
+  <a href="#main" class="skip-link">跳到主内容</a>
   <div class="app">
     <header class="topbar">
       <div class="topbar-inner">
-        <h1 class="logo">兴趣记录</h1>
-        <div class="topbar-actions">
+        <h1 class="logo"><img src="favicon.svg" alt="" class="logo-icon" width="28" height="28" />日迹</h1>
+        <div class="topbar-actions" id="topbarActions">
+          <span class="sync-status-text" id="syncStatusText" aria-live="polite" title="点击打开云同步"></span>
+          <button type="button" class="btn btn-ghost btn-icon-only" id="btnTheme" title="切换浅色/深色主题" aria-label="切换浅色/深色主题">🌓</button>
+          <div class="export-wrap">
+            <button type="button" class="btn btn-ghost" id="btnExport" title="导出数据">导出</button>
+            <div class="export-dropdown hidden" id="exportDropdown">
+              <button type="button" class="export-option" id="btnExportJson">导出 JSON</button>
+              <button type="button" class="export-option" id="btnExportCsv">导出 CSV</button>
+            </div>
+          </div>
           <button type="button" class="btn btn-ghost" id="btnSync" title="云同步">云同步</button>
-          <button type="button" class="btn btn-primary btn-new" id="btnNew">
+          <button type="button" class="btn btn-primary btn-new" id="btnNew" title="新建兴趣（N）">
             <span class="btn-icon">+</span> 新建兴趣
           </button>
         </div>
       </div>
     </header>
-    <div class="sync-panel hidden" id="syncPanel">
+    <div class="sync-panel hidden" id="syncPanel" role="dialog" aria-modal="true" aria-labelledby="syncTitle" aria-describedby="syncDesc">
       <div class="sync-panel-inner">
-        <h3 class="sync-title">GitHub Gist 云同步</h3>
-        <p class="sync-desc">使用 <a href="https://github.com/settings/tokens/new?scopes=gist&description=habits-tracker" target="_blank" rel="noopener">Personal Access Token</a>（需勾选 gist 权限）将数据同步到你的 GitHub Gist。部署给多人使用时，每人用各自的 Token，首次推送会自动创建各自的 Gist，数据互不干扰。</p>
-        <label class="sync-label">
-          <span>Token</span>
-          <input type="password" class="sync-input" id="syncToken" placeholder="ghp_xxxx..." autocomplete="off" />
-        </label>
-        <div class="sync-gist-id-wrap">
-          <label class="sync-label sync-label-inline">
-            <span>当前 Gist</span>
+        <div class="sync-header">
+          <h3 class="sync-title" id="syncTitle">GitHub Gist 云同步</h3>
+          <button type="button" class="sync-close" id="syncClose" aria-label="关闭（Esc）">×</button>
+        </div>
+        <p class="sync-desc" id="syncDesc">使用 <a href="https://github.com/settings/tokens/new?scopes=gist&description=habits-tracker" target="_blank" rel="noopener">Personal Access Token</a>（需勾选 gist 权限）将数据同步到你的 GitHub Gist。多人使用时每人用各自 Token，数据互不干扰。</p>
+        <section class="sync-section">
+          <h4 class="sync-section-title">Token</h4>
+          <label class="sync-label">
+            <span class="sync-label-text">访问令牌</span>
+            <input type="password" class="sync-input" id="syncToken" placeholder="ghp_xxxx..." autocomplete="off" />
+          </label>
+          <button type="button" class="btn btn-ghost btn-small sync-section-btn" id="btnSyncSaveToken">保存 Token</button>
+        </section>
+        <section class="sync-section">
+          <h4 class="sync-section-title">Gist</h4>
+          <label class="sync-label">
+            <span class="sync-label-text">当前 Gist ID</span>
             <input type="text" class="sync-input sync-input-id" id="syncGistIdDisplay" readonly placeholder="首次推送后自动显示" />
           </label>
-          <p class="sync-hint">换设备时：在另一台设备粘贴上方 Gist ID 并点「绑定 Gist」，再拉取即可。</p>
+          <p class="sync-hint">换设备：在另一台设备粘贴上方 Gist ID 并点「绑定 Gist」，再拉取即可。</p>
           <label class="sync-label">
-            <span>绑定到已有 Gist（可选）</span>
+            <span class="sync-label-text">绑定到已有 Gist（可选）</span>
             <input type="text" class="sync-input" id="syncGistIdBind" placeholder="粘贴 Gist ID 后点绑定" autocomplete="off" />
           </label>
-          <button type="button" class="btn btn-ghost btn-small" id="btnSyncBindGist">绑定 Gist</button>
-        </div>
+          <button type="button" class="btn btn-ghost btn-small sync-section-btn" id="btnSyncBindGist">绑定 Gist</button>
+        </section>
         <div class="sync-actions">
-          <button type="button" class="btn btn-ghost" id="btnSyncSaveToken">保存 Token</button>
           <button type="button" class="btn btn-primary" id="btnSyncPush">推送到云端</button>
           <button type="button" class="btn btn-ghost" id="btnSyncPull">从云端拉取</button>
         </div>
         <p class="sync-status" id="syncStatus"></p>
-        <button type="button" class="sync-close" id="syncClose" aria-label="关闭">×</button>
       </div>
     </div>
-    <main class="main">
+    <main class="main" id="main" tabindex="-1">
       <div class="main-placeholder" id="mainPlaceholder">
         <span class="placeholder-icon" aria-hidden="true"></span>
         <p>点击「新建兴趣」开始记录</p>
       </div>
-      <div class="heatmap-cards" id="heatmapCards"></div>
+      <div class="heatmap-cards" id="heatmapCards" role="list"></div>
     </main>
   </div>
   <script src="app.js"></script>
