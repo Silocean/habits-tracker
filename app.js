@@ -442,9 +442,9 @@
       `<input type="text" class="heatmap-title heatmap-title-edit hidden" placeholder="未命名兴趣" maxlength="32" value="${escapeHtml(heatmap.name)}" />` +
       "</div>" +
       '<div class="header-actions">' +
-      '<label class="range-label"><span>时间范围</span><span class="range-select-wrap"><button type="button" class="range-prev" aria-label="上一年" title="上一年">‹</button><span class="range-display">' +
+      '<label class="range-label"><span>时间范围</span><span class="range-select-wrap"><button type="button" class="range-prev" aria-label="上一年" title="上一年">‹</button><button type="button" class="range-display" aria-label="跳转到当前年份" title="点击跳转到当前年份">' +
       escapeHtml(rangeDisplayText) +
-      '</span><button type="button" class="range-next" aria-label="下一年" title="下一年">›</button></span></label>' +
+      '</button><button type="button" class="range-next" aria-label="下一年" title="下一年">›</button></span></label>' +
       '<div class="card-more-actions-wrap"><button type="button" class="btn btn-ghost btn-more-actions btn-icon-only" title="更多操作" aria-label="更多操作" aria-haspopup="true"><span aria-hidden="true">⋯</span></button><div class="card-actions-dropdown hidden"></div></div>' +
       "</div>" +
       '<span class="header-collapsed-summary hidden" aria-hidden="true"></span>';
@@ -693,7 +693,14 @@
 
     const rangePrev = header.querySelector(".range-prev");
     const rangeNext = header.querySelector(".range-next");
+    const rangeDisplay = header.querySelector(".range-display");
     const currentYear = new Date().getFullYear();
+
+    if (rangeDisplay) {
+      rangeDisplay.addEventListener("click", function () {
+        applyRangeValue(currentYear);
+      });
+    }
 
     function updateRangeButtonsState() {
       const cur = heatmap.viewRange == null ? "recent" : heatmap.viewRange;

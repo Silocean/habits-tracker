@@ -634,6 +634,17 @@ body {
   color: var(--text);
   min-width: 72px;
   text-align: center;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  font-family: var(--font);
+  transition: background 0.15s, color 0.15s;
+}
+.range-display:hover {
+  color: var(--accent);
+  background: var(--border-light);
 }
 
 .range-prev,
