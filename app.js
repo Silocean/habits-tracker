@@ -485,6 +485,7 @@
       if (cellMenuEl && cellMenuEl.parentNode) cellMenuEl.remove();
       cellMenuEl = null;
       cellMenuClose = null;
+      suppressNextCellClick = null;
     };
     document.addEventListener("click", cellMenuClose);
   }
@@ -660,10 +661,10 @@
           cellLongPressTimer = null;
           const cur = (heatmap.data[key] || 0) | 0;
           suppressNextCellClick = cell;
+          if (navigator.vibrate) navigator.vibrate(10);
           const touch = e.changedTouches && e.changedTouches[0];
           const ev = touch ? { preventDefault: () => {}, clientX: touch.clientX, clientY: touch.clientY } : e;
           showCellMenu(ev, cell, cur, () => updateCellCount(cell, Math.max(0, cur - 1)), () => updateCellCount(cell, 0));
-          setTimeout(() => { suppressNextCellClick = null; }, 400);
         }, 500);
       }, { passive: true });
       cell.addEventListener("touchend", function () {
