@@ -676,7 +676,12 @@
         cell.classList.add("empty");
         cell.style.background = "";
       } else {
-        cell.style.background = colors[displayLevel];
+        cell.style.background = getLevelColors(heatmap.color)[displayLevel];
+      }
+      if (isToday) {
+        cell.style.setProperty("box-shadow", "0 0 0 1px " + (heatmap.color || "#0969da"));
+      } else {
+        cell.style.removeProperty("box-shadow");
       }
       refreshTooltipForCell(cell);
       const card = cell.closest(".heatmap-card");
@@ -1069,13 +1074,20 @@
         gInput.value = c.g;
         bInput.value = c.b;
         const newColors = getLevelColors(hex);
-        const legendBlocks = card.querySelector(".legend-blocks");
+        const targetCard = document.getElementById("card-" + heatmap.id) || card;
+        const heatmapWrap = targetCard.querySelector(".heatmap-wrap");
+        if (heatmapWrap) heatmapWrap.style.setProperty("--card-accent", hex);
+        const todayCell = targetCard.querySelector("[data-is-today='1']");
+        if (todayCell) todayCell.style.setProperty("box-shadow", "0 0 0 1px " + hex);
+        const legendBlocks = targetCard.querySelector(".legend-blocks");
         if (legendBlocks) legendBlocks.innerHTML = [0, 1, 2, 3, 4].map((i) => `<span style="background: ${newColors[i]}; border: ${i === 0 ? "1px solid var(--border)" : "none"};"></span>`).join("");
-        card.querySelectorAll(".heatmap-cell").forEach((cell) => {
+        targetCard.querySelectorAll(".heatmap-cell").forEach((cell) => {
           const level = parseInt(cell.dataset.count || "0", 10);
           const displayLevel = level <= 0 ? 0 : getLevel(level);
           cell.style.background = displayLevel === 0 ? "" : newColors[displayLevel];
         });
+        const trendWrapEl = targetCard.querySelector(".trend-chart-wrap");
+        if (trendWrapEl && !trendWrapEl.classList.contains("hidden")) refreshTrendChart();
       }
       function syncFromRgb() {
         const r = parseInt(rInput.value, 10);
@@ -1108,9 +1120,23 @@
           onConfirm: function () {
             const idx = getHeatmapIndex(heatmap.id);
             if (idx === -1) return;
-            heatmaps.splice(idx, 1);
-            save();
-            renderAllHeatmaps();
+            const cardEl = document.getElementById("card-" + heatmap.id);
+            if (cardEl) {
+              cardEl.classList.add("card-removing");
+              cardEl.addEventListener("transitionend", function onEnd(e) {
+                if (e.target !== cardEl || e.propertyName !== "opacity") return;
+                cardEl.removeEventListener("transitionend", onEnd);
+                cardEl.remove();
+                heatmaps.splice(idx, 1);
+                save();
+                renderTagFilterBar();
+                updateFirstUseHint();
+              });
+            } else {
+              heatmaps.splice(idx, 1);
+              save();
+              renderAllHeatmaps();
+            }
           },
         });
       });
@@ -1350,7 +1376,18 @@
     save();
     renderAllHeatmaps();
     const card = $("card-" + heatmap.id);
-    if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+      const titleDisplay = card.querySelector(".heatmap-title-display");
+      const titleInput = card.querySelector(".heatmap-title");
+      if (titleDisplay && titleInput) {
+        titleDisplay.classList.add("hidden");
+        titleInput.classList.remove("hidden");
+        titleInput.value = heatmap.name || "";
+        titleInput.focus();
+        titleInput.select();
+      }
+    }
   }
 
   function getSyncToken() {
@@ -1746,7 +1783,7 @@ h1{font-size:1.35rem;margin:0 0 24px;text-align:center}
 .readonly-grid{display:grid;gap:var(--cell-gap);width:max-content}
 .readonly-grid .cell{width:var(--cell-size);height:var(--cell-size);border-radius:2px;border:1px solid var(--border)}
 .readonly-grid .cell.empty{background:var(--cell-empty)}
-.readonly-grid .cell.today{box-shadow:0 0 0 2px var(--card-accent)}
+.readonly-grid .cell.today{box-shadow:0 0 0 1px var(--card-accent)}
 .readonly-grid .cell-out{width:var(--cell-size);height:var(--cell-size);border-radius:2px;background:transparent;border:none}
 </style>
 </head>
@@ -1842,7 +1879,7 @@ ${cardsHtml}
         }
         if (isToday) {
           ctx.strokeStyle = heatmap.color || "#0969da";
-          ctx.lineWidth = 3;
+          ctx.lineWidth = 1;
           ctx.strokeRect(x - 1, y - 1, cellSize + 2, cellSize + 2);
         }
       }
