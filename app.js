@@ -200,6 +200,66 @@
     return dates;
   }
 
+  /** 分享专用：根据时间范围类型返回网格日期，含 inRange 标记 */
+  function getGridDatesForShare(rangeType, customStart, customEnd) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let weekStart;
+    let rangeStart, rangeEnd;
+    let cols = WEEKS;
+
+    if (rangeType === "year") {
+      weekStart = getWeekStart(today);
+      rangeStart = new Date(today);
+      rangeStart.setDate(today.getDate() - 364);
+      rangeEnd = new Date(today);
+      rangeEnd.setHours(23, 59, 59, 999);
+    } else if (rangeType === "90days") {
+      rangeStart = new Date(today);
+      rangeStart.setDate(today.getDate() - 89);
+      rangeStart.setHours(0, 0, 0, 0);
+      rangeEnd = new Date(today);
+      rangeEnd.setHours(23, 59, 59, 999);
+      weekStart = getWeekStart(rangeStart);
+      cols = 14;
+    } else if (rangeType === "thisYear") {
+      rangeStart = new Date(today.getFullYear(), 0, 1);
+      rangeStart.setHours(0, 0, 0, 0);
+      rangeEnd = new Date(today);
+      rangeEnd.setHours(23, 59, 59, 999);
+      weekStart = getWeekStart(rangeStart);
+    } else if (rangeType === "custom" && customStart && customEnd) {
+      rangeStart = new Date(customStart);
+      rangeStart.setHours(0, 0, 0, 0);
+      rangeEnd = new Date(customEnd);
+      rangeEnd.setHours(23, 59, 59, 999);
+      weekStart = getWeekStart(rangeStart);
+      const totalDays = Math.ceil((rangeEnd - rangeStart) / (24 * 60 * 60 * 1000)) + 1;
+      cols = Math.max(14, Math.min(WEEKS, Math.ceil(totalDays / 7) + 1));
+    } else {
+      rangeType = "thisYear";
+      rangeStart = new Date(today.getFullYear(), 0, 1);
+      rangeStart.setHours(0, 0, 0, 0);
+      rangeEnd = new Date(today);
+      rangeEnd.setHours(23, 59, 59, 999);
+      weekStart = getWeekStart(rangeStart);
+    }
+
+    const dates = [];
+    for (let col = 0; col < cols; col++) {
+      const weekOffset = rangeType === "year" ? (cols - 1 - col) * DAYS_PER_WEEK : 0;
+      for (let row = 0; row < DAYS_PER_WEEK; row++) {
+        const d = new Date(weekStart);
+        if (rangeType === "year") d.setDate(weekStart.getDate() - weekOffset + row);
+        else d.setDate(weekStart.getDate() + col * DAYS_PER_WEEK + row);
+        const inRange = d >= rangeStart && d <= rangeEnd;
+        const inYear = inRange;
+        dates.push({ date: d, col, row, inYear, inRange });
+      }
+    }
+    return dates;
+  }
+
   function formatDateKey(d) {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -211,6 +271,42 @@
   function getHeatmapStats(heatmap, viewRange) {
     const gridDates = getGridDates(viewRange);
     const rangeDates = viewRange === "recent" ? gridDates : gridDates.filter((x) => x.inYear);
+    const uniqueKeys = new Set();
+    rangeDates.forEach(({ date }) => uniqueKeys.add(formatDateKey(date)));
+    const daysInRange = uniqueKeys.size;
+    let total = 0;
+    const keysWithRecord = [];
+    uniqueKeys.forEach((key) => {
+      const c = heatmap.data[key] || 0;
+      total += c;
+      if (c >= 1) keysWithRecord.push(key);
+    });
+    keysWithRecord.sort();
+    let streakDays = 0;
+    if (keysWithRecord.length) {
+      let run = 1;
+      for (let i = 1; i < keysWithRecord.length; i++) {
+        const prev = new Date(keysWithRecord[i - 1]);
+        const curr = new Date(keysWithRecord[i]);
+        prev.setHours(0, 0, 0, 0);
+        curr.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((curr - prev) / (24 * 60 * 60 * 1000));
+        if (diffDays === 1) run++;
+        else {
+          if (run > streakDays) streakDays = run;
+          run = 1;
+        }
+      }
+      if (run > streakDays) streakDays = run;
+    }
+    const avgPerDay = daysInRange ? total / daysInRange : 0;
+    return { total, streakDays, daysInRange, avgPerDay };
+  }
+
+  /** 分享专用：根据时间范围类型计算统计 */
+  function getHeatmapStatsForShare(heatmap, rangeType, customStart, customEnd) {
+    const gridDates = getGridDatesForShare(rangeType, customStart, customEnd);
+    const rangeDates = gridDates.filter((x) => x.inRange);
     const uniqueKeys = new Set();
     rangeDates.forEach(({ date }) => uniqueKeys.add(formatDateKey(date)));
     const daysInRange = uniqueKeys.size;
@@ -1485,6 +1581,298 @@
       });
     }
   }
+
+  function getShareRangeConfig() {
+    const rangeType = ($("shareTimeRange") && $("shareTimeRange").value) || "thisYear";
+    const startInput = $("shareStartDate");
+    const endInput = $("shareEndDate");
+    const customStart = startInput && startInput.value ? startInput.value : null;
+    const customEnd = endInput && endInput.value ? endInput.value : null;
+    return { rangeType, customStart, customEnd };
+  }
+
+  function openSharePanel() {
+    const panel = $("sharePanel");
+    if (!panel) return;
+    const today = new Date();
+    const yearStart = today.getFullYear() + "-01-01";
+    const todayStr = formatDateKey(today);
+    const startInput = $("shareStartDate");
+    const endInput = $("shareEndDate");
+    if (startInput) startInput.value = yearStart;
+    if (endInput) endInput.value = todayStr;
+    const customDates = $("shareCustomDates");
+    const rangeSelect = $("shareTimeRange");
+    if (customDates && rangeSelect) {
+      customDates.classList.toggle("hidden", rangeSelect.value !== "custom");
+    }
+    renderShareInterestsList();
+    panel.classList.remove("hidden");
+    trapFocus(panel);
+  }
+
+  function closeSharePanel() {
+    const panel = $("sharePanel");
+    if (panel) panel.classList.add("hidden");
+    $("btnShare") && $("btnShare").focus();
+  }
+
+  function renderShareInterestsList() {
+    const list = $("shareInterestsList");
+    if (!list) return;
+    const toRender = getHeatmapsToRender();
+    list.innerHTML = toRender
+      .map(
+        (h) =>
+          '<label class="share-interest-item">' +
+          '<input type="checkbox" data-heatmap-id="' + escapeHtml(h.id) + '" checked />' +
+          '<span class="share-interest-swatch" style="background:' + escapeHtml(h.color || "#216e39") + '"></span>' +
+          '<span>' + escapeHtml(h.name || "未命名兴趣") + "</span>" +
+          "</label>"
+      )
+      .join("");
+  }
+
+  function sanitizeFilename(name) {
+    return (name || "未命名").replace(/[\s\\/:*?"<>|]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "未命名";
+  }
+
+  function exportReadonlySharePage() {
+    const { rangeType, customStart, customEnd } = getShareRangeConfig();
+    const toRender = getHeatmapsToRender();
+    if (toRender.length === 0) {
+      alert("当前没有可分享的兴趣");
+      return;
+    }
+    const gridDates = getGridDatesForShare(rangeType, customStart, customEnd);
+    const todayKey = formatDateKey(new Date());
+    const heatmapsData = toRender.map((h) => ({
+      name: h.name || "未命名兴趣",
+      color: h.color || "#216e39",
+      data: h.data || {},
+      stats: getHeatmapStatsForShare(h, rangeType, customStart, customEnd),
+    }));
+    const colorsMap = heatmapsData.map((h) => getLevelColors(h.color));
+    const colCount = gridDates.length ? Math.ceil(gridDates.length / 7) : 1;
+    const monthLabelsHtml = buildMonthLabelsForShare(gridDates);
+    const gridWidth = colCount * (16 + 5) - 5 + 6;
+    const cardsHtml = heatmapsData
+      .map((hm, idx) => {
+        const colors = colorsMap[idx];
+        const legendHtml = [0, 1, 2, 3, 4]
+          .map((i) => '<span style="background:' + colors[i] + ';border:' + (i === 0 ? "1px solid var(--border)" : "none") + ';"></span>')
+          .join("");
+        const cellsHtml = gridDates
+          .map(({ date, inYear }) => {
+            const key = formatDateKey(date);
+            if (!inYear) return '<span class="cell-out"></span>';
+            const count = hm.data[key] || 0;
+            const level = getLevel(count);
+            const isToday = key === todayKey;
+            const bg = level === 0 ? "var(--cell-empty)" : colors[level];
+            return (
+              '<span class="cell' +
+              (level === 0 ? " empty" : "") +
+              (isToday ? " today" : "") +
+              '" style="background:' +
+              bg +
+              ';" data-key="' +
+              key +
+              '" title="' +
+              key +
+              " " +
+              count +
+              ' 次"></span>'
+            );
+          })
+          .join("");
+        return (
+          '<div class="readonly-card" style="--card-accent:' +
+          hm.color +
+          '">' +
+          '<h3 class="readonly-title">' +
+          escapeHtml(hm.name) +
+          "</h3>" +
+          '<p class="readonly-stats">总 <strong>' +
+          hm.stats.total +
+          "</strong> 次 · 最长连续 <strong>" +
+          hm.stats.streakDays +
+          "</strong> 天 · 日均 <strong>" +
+          hm.stats.avgPerDay.toFixed(2) +
+          "</strong> 次</p>" +
+          '<div class="readonly-legend">' +
+          '<span>少</span><span class="legend-blocks">' +
+          legendHtml +
+          "</span><span>多</span>" +
+          "</div>" +
+          '<div class="readonly-grid-wrap">' +
+          '<div class="readonly-months" style="min-width:' +
+          gridWidth +
+          'px">' +
+          monthLabelsHtml +
+          "</div>" +
+          '<div class="readonly-grid" style="grid-template-rows:repeat(7, var(--cell-size));grid-auto-flow:column;grid-auto-columns:var(--cell-size);">' +
+          cellsHtml +
+          "</div></div></div>"
+        );
+      })
+      .join("");
+    const filenameBase = rangeType === "custom" && customStart ? customStart : formatDateKey(new Date());
+    const filename = "日迹-分享-" + filenameBase + ".html";
+    const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>日迹 - 分享</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg-page:#f5f7f9;--bg-card:#fff;--border:#e1e4e8;--text:#1f2328;--text-muted:#656d76;--cell-size:16px;--cell-gap:5px;--cell-empty:#ebedf0;--font:"Noto Sans SC",sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg-page:#0d1117;--bg-card:#161b22;--border:#30363d;--text:#e6edf3;--text-muted:#8b949e;--cell-empty:#21262d}}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);background:var(--bg-page);color:var(--text);padding:24px;line-height:1.5;display:flex;flex-direction:column;align-items:center}
+h1{font-size:1.35rem;margin:0 0 24px;text-align:center}
+.readonly-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px;width:fit-content;max-width:100%}
+.readonly-title{font-size:1.2rem;margin:0 0 10px;color:var(--text)}
+.readonly-stats{font-size:13px;color:var(--text-muted);margin:0 0 12px}
+.readonly-stats strong{color:var(--text)}
+.readonly-legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);margin-bottom:12px}
+.legend-blocks{display:flex;gap:2px}
+.legend-blocks span{width:var(--cell-size);height:var(--cell-size);border-radius:2px;display:inline-block}
+.readonly-grid-wrap{overflow-x:auto;padding:4px 0;max-width:100%}
+.readonly-months{height:var(--cell-size);margin-bottom:var(--cell-gap);font-size:11px;color:var(--text-muted);position:relative}
+.readonly-month-label{position:absolute;white-space:nowrap}
+.readonly-grid{display:grid;gap:var(--cell-gap);width:max-content}
+.readonly-grid .cell{width:var(--cell-size);height:var(--cell-size);border-radius:2px;border:1px solid var(--border)}
+.readonly-grid .cell.empty{background:var(--cell-empty)}
+.readonly-grid .cell.today{box-shadow:0 0 0 2px var(--card-accent)}
+.readonly-grid .cell-out{width:var(--cell-size);height:var(--cell-size);border-radius:2px;background:transparent;border:none}
+</style>
+</head>
+<body>
+<h1>日迹 · 分享</h1>
+${cardsHtml}
+</body>
+</html>`;
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function buildMonthLabelsForShare(gridDates) {
+    const monthStarts = [];
+    let lastMonth = -1;
+    const colCount = gridDates.length ? Math.ceil(gridDates.length / 7) : 1;
+    for (let col = 0; col < colCount; col++) {
+      const datesInCol = gridDates.filter((x) => x.col === col && x.inYear).map((x) => x.date);
+      if (datesInCol.length === 0) continue;
+      const earliest = new Date(Math.min(...datesInCol.map((d) => d.getTime())));
+      const month = earliest.getMonth();
+      if (col === 0 || month !== lastMonth) {
+        monthStarts.push({ col, label: month + 1 + "月" });
+        lastMonth = month;
+      }
+    }
+    const cellSize = 16;
+    const gap = 5;
+    return monthStarts
+      .map(({ col, label }) => '<span class="readonly-month-label" style="left:' + col * (cellSize + gap) + 'px">' + escapeHtml(label) + "</span>")
+      .join("");
+  }
+
+  function generateShareImageCanvas(heatmap, rangeType, customStart, customEnd) {
+    const todayKey = formatDateKey(new Date());
+    const gridDates = getGridDatesForShare(rangeType, customStart, customEnd);
+    const stats = getHeatmapStatsForShare(heatmap, rangeType, customStart, customEnd);
+    const colors = getLevelColors(heatmap.color || "#216e39");
+    const cellSize = 20;
+    const gap = 4;
+    const colCount = gridDates.length ? Math.ceil(gridDates.length / 7) : 1;
+    const width = 48 + colCount * (cellSize + gap) - gap;
+    const height = 180 + 7 * (cellSize + gap) - gap;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.font = "14px 'Noto Sans SC', sans-serif";
+    ctx.fillStyle = "#1f2328";
+    ctx.fillText(heatmap.name || "未命名兴趣", 24, 28);
+    ctx.font = "12px 'Noto Sans SC', sans-serif";
+    ctx.fillStyle = "#656d76";
+    ctx.fillText("总 " + stats.total + " 次 · 最长连续 " + stats.streakDays + " 天 · 日均 " + stats.avgPerDay.toFixed(2) + " 次", 24, 50);
+    const legendY = 68;
+    ctx.fillStyle = "#656d76";
+    ctx.font = "11px sans-serif";
+    ctx.fillText("少", 24, legendY + 10);
+    for (let i = 0; i <= 4; i++) {
+      ctx.fillStyle = colors[i];
+      if (i === 0) {
+        ctx.strokeStyle = "#d0d7de";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(44 + i * 18, legendY, 16, 16);
+      }
+      ctx.fillRect(44 + i * 18, legendY, 16, 16);
+    }
+    ctx.fillStyle = "#656d76";
+    ctx.fillText("多", 44 + 5 * 18, legendY + 10);
+    const gridY = 100;
+    gridDates.forEach(({ date, inYear }, idx) => {
+      const col = Math.floor(idx / 7);
+      const row = idx % 7;
+      const x = 24 + col * (cellSize + gap);
+      const y = gridY + row * (cellSize + gap);
+      const key = formatDateKey(date);
+      const count = inYear ? (heatmap.data[key] || 0) : 0;
+      const level = inYear ? getLevel(count) : 0;
+      const isToday = inYear && key === todayKey;
+      if (!inYear) {
+        ctx.fillStyle = "#f6f8fa";
+        ctx.fillRect(x, y, cellSize, cellSize);
+      } else {
+        ctx.fillStyle = level === 0 ? "#ebedf0" : colors[level];
+        ctx.fillRect(x, y, cellSize, cellSize);
+        if (level === 0) {
+          ctx.strokeStyle = "#d0d7de";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, cellSize, cellSize);
+        }
+        if (isToday) {
+          ctx.strokeStyle = heatmap.color || "#0969da";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(x - 1, y - 1, cellSize + 2, cellSize + 2);
+        }
+      }
+    });
+    return canvas;
+  }
+
+  async function generateShareImages() {
+    const { rangeType, customStart, customEnd } = getShareRangeConfig();
+    const list = $("shareInterestsList");
+    const checked = list ? list.querySelectorAll('input[type="checkbox"]:checked') : [];
+    if (checked.length === 0) {
+      alert("请至少勾选一个兴趣");
+      return;
+    }
+    const toRender = getHeatmapsToRender();
+    const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+    for (let i = 0; i < checked.length; i++) {
+      const id = checked[i].dataset.heatmapId;
+      const heatmap = toRender.find((h) => h.id === id);
+      if (!heatmap) continue;
+      const canvas = generateShareImageCanvas(heatmap, rangeType, customStart, customEnd);
+      const filename = "日迹-" + sanitizeFilename(heatmap.name || "未命名") + ".png";
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = filename;
+      a.click();
+      if (i < checked.length - 1) await delay(300);
+    }
+  }
   function exportJson() {
     const blob = new Blob([JSON.stringify(heatmaps, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
@@ -1653,7 +2041,9 @@
     document.addEventListener("keydown", function (e) {
       if (e.key === "n" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addNewHeatmap(); return; }
       if (e.key === "N" && !e.ctrlKey && !e.metaKey && document.activeElement && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) { e.preventDefault(); addNewHeatmap(); return; }
-      if (e.key === "Escape") {
+        if (e.key === "Escape") {
+        const sharePanel = $("sharePanel");
+        if (sharePanel && !sharePanel.classList.contains("hidden")) { closeSharePanel(); return; }
         const panel = $("syncPanel");
         if (panel && !panel.classList.contains("hidden")) { closeSyncPanel(); return; }
         const openPicker = document.querySelector(".color-picker-dropdown:not(.hidden)");
@@ -1707,6 +2097,31 @@
     }
     if (btnPush) btnPush.addEventListener("click", pushToGist);
     if (btnPull) btnPull.addEventListener("click", function () { pullFromGist({ skipDirtyCheck: true }); });
+
+    const btnShare = $("btnShare");
+    const sharePanel = $("sharePanel");
+    const shareClose = $("shareClose");
+    const shareTimeRange = $("shareTimeRange");
+    const shareCustomDates = $("shareCustomDates");
+    if (btnShare) btnShare.addEventListener("click", openSharePanel);
+    if (shareClose) shareClose.addEventListener("click", closeSharePanel);
+    if (sharePanel) {
+      sharePanel.addEventListener("click", function (e) {
+        if (e.target === sharePanel) closeSharePanel();
+      });
+      sharePanel.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") closeSharePanel();
+      });
+    }
+    if (shareTimeRange) {
+      shareTimeRange.addEventListener("change", function () {
+        if (shareCustomDates) shareCustomDates.classList.toggle("hidden", this.value !== "custom");
+      });
+    }
+    const btnExportReadonly = $("btnExportReadonly");
+    const btnGenerateImage = $("btnGenerateImage");
+    if (btnExportReadonly) btnExportReadonly.addEventListener("click", function () { exportReadonlySharePage(); });
+    if (btnGenerateImage) btnGenerateImage.addEventListener("click", function () { generateShareImages(); });
   }
 
   async function init() {

@@ -33,6 +33,7 @@
             <input type="file" class="import-file-input hidden" id="importFileInput" accept=".json,.csv,application/json,text/csv" />
           </div>
           <button type="button" class="btn btn-ghost" id="btnSync" title="云同步">云同步</button>
+          <button type="button" class="btn btn-ghost" id="btnShare" title="分享">分享</button>
           <button type="button" class="btn btn-primary btn-new" id="btnNew" title="新建兴趣（N）">
             <span class="btn-icon">+</span> 新建兴趣
           </button>
@@ -82,6 +83,50 @@
           </div>
         </div>
         <p class="sync-status" id="syncStatus"></p>
+      </div>
+    </div>
+    <div class="share-panel hidden" id="sharePanel" role="dialog" aria-modal="true" aria-labelledby="shareTitle" aria-describedby="shareInstructions">
+      <div class="share-panel-inner">
+        <div class="share-header">
+          <h3 class="share-title" id="shareTitle">分享</h3>
+          <button type="button" class="share-close" id="shareClose" aria-label="关闭（Esc）">×</button>
+        </div>
+        <div class="share-instructions" id="shareInstructions">
+          <p class="share-instructions-title">选择时间范围和兴趣，可导出只读分享页或生成分享图。</p>
+        </div>
+        <div class="share-form">
+          <label class="share-field">
+            <span class="share-field-label">时间范围</span>
+            <select class="share-select" id="shareTimeRange">
+              <option value="year">最近一年</option>
+              <option value="90days">最近 90 天</option>
+              <option value="thisYear" selected>今年</option>
+              <option value="custom">自定义</option>
+            </select>
+          </label>
+          <div class="share-custom-dates hidden" id="shareCustomDates">
+            <label class="share-field">
+              <span class="share-field-label">开始日期</span>
+              <input type="date" class="share-input" id="shareStartDate" />
+            </label>
+            <label class="share-field">
+              <span class="share-field-label">结束日期</span>
+              <input type="date" class="share-input" id="shareEndDate" />
+            </label>
+          </div>
+          <label class="share-field">
+            <span class="share-field-label">生成分享图时包含的兴趣</span>
+            <div class="share-interests-list" id="shareInterestsList"></div>
+          </label>
+        </div>
+        <div class="share-footer">
+          <div class="share-actions-row share-actions-row-main">
+            <div class="share-actions-group">
+              <button type="button" class="btn btn-outline share-btn" id="btnExportReadonly">导出只读分享页</button>
+              <button type="button" class="btn btn-primary share-btn" id="btnGenerateImage">生成分享图</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <main class="main" id="main" tabindex="-1">
