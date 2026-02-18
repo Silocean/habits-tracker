@@ -39,37 +39,47 @@
         </div>
       </div>
     </header>
-    <div class="sync-panel hidden" id="syncPanel" role="dialog" aria-modal="true" aria-labelledby="syncTitle" aria-describedby="syncDesc">
+    <div class="sync-panel hidden" id="syncPanel" role="dialog" aria-modal="true" aria-labelledby="syncTitle" aria-describedby="syncInstructions">
       <div class="sync-panel-inner">
         <div class="sync-header">
-          <h3 class="sync-title" id="syncTitle">GitHub Gist 云同步</h3>
+          <h3 class="sync-title" id="syncTitle">云同步设置</h3>
           <button type="button" class="sync-close" id="syncClose" aria-label="关闭（Esc）">×</button>
         </div>
-        <p class="sync-desc" id="syncDesc">使用 <a href="https://github.com/settings/tokens/new?scopes=gist&description=habits-tracker" target="_blank" rel="noopener">Personal Access Token</a>（需勾选 gist 权限）将数据同步到你的 GitHub Gist。多人使用时每人用各自 Token，数据互不干扰。</p>
-        <section class="sync-section">
-          <h4 class="sync-section-title">Token</h4>
-          <label class="sync-label">
-            <span class="sync-label-text">访问令牌</span>
-            <input type="password" class="sync-input" id="syncToken" placeholder="ghp_xxxx..." autocomplete="off" />
+        <div class="sync-status-bar hidden" id="syncStatusBar" aria-live="polite">
+          <span class="sync-status-bar-icon" aria-hidden="true">✓</span>
+          <span class="sync-status-bar-text" id="syncStatusBarText"></span>
+        </div>
+        <div class="sync-instructions" id="syncInstructions">
+          <p class="sync-instructions-title">使用说明：</p>
+          <ol class="sync-instructions-list">
+            <li>前往 <a href="https://github.com/settings/tokens/new?scopes=gist&description=habits-tracker" target="_blank" rel="noopener">GitHub Settings → Tokens</a> 创建 Token</li>
+            <li>勾选 gist 权限，其他不需要</li>
+            <li>将生成的 Token 粘贴到下方输入框</li>
+            <li>Token 仅保存在当前浏览器本地，不会发送到其他地方</li>
+          </ol>
+        </div>
+        <div class="sync-form">
+          <label class="sync-field">
+            <span class="sync-field-label">GitHub Personal Access Token</span>
+            <span class="sync-input-wrap">
+              <input type="password" class="sync-input" id="syncToken" placeholder="ghp_xxxx..." autocomplete="off" />
+              <button type="button" class="sync-input-eye" id="syncTokenEye" aria-label="显示/隐藏 Token" title="显示/隐藏">👁</button>
+            </span>
           </label>
-          <button type="button" class="btn btn-ghost btn-small sync-section-btn" id="btnSyncSaveToken">保存 Token</button>
-        </section>
-        <section class="sync-section">
-          <h4 class="sync-section-title">Gist</h4>
-          <label class="sync-label">
-            <span class="sync-label-text">当前 Gist ID</span>
-            <input type="text" class="sync-input sync-input-id" id="syncGistIdDisplay" readonly placeholder="首次推送后自动显示" />
+          <label class="sync-field">
+            <span class="sync-field-label">Gist ID <span class="sync-field-optional">（可选，留空自动创建）</span></span>
+            <input type="text" class="sync-input" id="syncGistIdBind" placeholder="留空则首次推送时自动创建" autocomplete="off" />
+            <span class="sync-field-hint">如需在新设备恢复数据，填入之前的 Gist ID</span>
           </label>
-          <p class="sync-hint">换设备：在另一台设备粘贴上方 Gist ID 并点「绑定 Gist」，再拉取即可。</p>
-          <label class="sync-label">
-            <span class="sync-label-text">绑定到已有 Gist（可选）</span>
-            <input type="text" class="sync-input" id="syncGistIdBind" placeholder="粘贴 Gist ID 后点绑定" autocomplete="off" />
-          </label>
-          <button type="button" class="btn btn-ghost btn-small sync-section-btn" id="btnSyncBindGist">绑定 Gist</button>
-        </section>
-        <div class="sync-actions">
-          <button type="button" class="btn btn-primary" id="btnSyncPush">推送到云端</button>
-          <button type="button" class="btn btn-ghost" id="btnSyncPull">从云端拉取</button>
+        </div>
+        <div class="sync-footer">
+          <div class="sync-actions-row sync-actions-row-main">
+            <div class="sync-actions-group">
+              <button type="button" class="btn btn-outline sync-btn" id="btnSyncPush">推送到云端</button>
+              <button type="button" class="btn btn-outline sync-btn" id="btnSyncPull">从云端拉取</button>
+            </div>
+            <button type="button" class="btn btn-primary sync-btn" id="btnSyncSaveSettings">保存设置</button>
+          </div>
         </div>
         <p class="sync-status" id="syncStatus"></p>
       </div>

@@ -1338,8 +1338,9 @@
       lastSyncErrorMessage = null;
       if (data.id) {
         setGistId(data.id);
-        const gistDisplay = $("syncGistIdDisplay");
-        if (gistDisplay) gistDisplay.value = data.id;
+        const gistInput = $("syncGistIdBind");
+        if (gistInput) gistInput.value = data.id;
+        updateSyncStatusBar();
       }
       lastSyncedSnapshot = body;
       localStorage.setItem(SYNC_LAST_PUSH_KEY, String(Date.now()));
@@ -1420,15 +1421,33 @@
     }
   }
 
+  function updateSyncStatusBar() {
+    const bar = $("syncStatusBar");
+    const textEl = $("syncStatusBarText");
+    if (!bar || !textEl) return;
+    const token = getSyncToken();
+    const gistId = getGistId();
+    if (token) {
+      bar.classList.remove("hidden");
+      textEl.textContent = gistId ? "已配置 Token, Gist ID: " + gistId.slice(0, 8) + "..." : "已配置 Token";
+    } else {
+      bar.classList.add("hidden");
+    }
+  }
+
   function openSyncPanel() {
     const panel = $("syncPanel");
     const tokenInput = $("syncToken");
-    const gistDisplay = $("syncGistIdDisplay");
     const gistBind = $("syncGistIdBind");
     if (panel) panel.classList.remove("hidden");
-    if (tokenInput) tokenInput.value = getSyncToken() || "";
-    if (gistDisplay) gistDisplay.value = getGistId() || "";
-    if (gistBind) gistBind.value = "";
+    if (tokenInput) {
+      tokenInput.value = getSyncToken() || "";
+      tokenInput.type = "password";
+    }
+    const eyeBtn = $("syncTokenEye");
+    if (eyeBtn) eyeBtn.setAttribute("aria-label", "显示 Token");
+    if (gistBind) gistBind.value = getGistId() || "";
+    updateSyncStatusBar();
     trapFocus(panel);
   }
   function closeSyncPanel() {
@@ -1652,32 +1671,30 @@
         if (e.key === "Escape") closeSyncPanel();
       });
     }
-    const btnSaveToken = $("btnSyncSaveToken");
+    const btnSyncSaveSettings = $("btnSyncSaveSettings");
     const btnPush = $("btnSyncPush");
     const btnPull = $("btnSyncPull");
-    if (btnSaveToken) {
-      btnSaveToken.addEventListener("click", function () {
+    const tokenEye = $("syncTokenEye");
+    if (tokenEye) {
+      tokenEye.addEventListener("click", function () {
         const input = $("syncToken");
-        const v = input && input.value.trim();
-        setSyncToken(v || null);
-        setSyncStatus(v ? "Token 已保存" : "Token 已清除");
-        startSyncPullInterval();
+        if (!input) return;
+        const isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
+        tokenEye.setAttribute("aria-label", isPassword ? "隐藏 Token" : "显示 Token");
       });
     }
-    const btnBindGist = $("btnSyncBindGist");
-    if (btnBindGist) {
-      btnBindGist.addEventListener("click", function () {
-        const input = $("syncGistIdBind");
-        const id = input && input.value.trim();
-        if (!id) {
-          setSyncStatus("请先粘贴 Gist ID", true);
-          return;
-        }
-        setGistId(id);
-        if (input) input.value = "";
-        const gistDisplay = $("syncGistIdDisplay");
-        if (gistDisplay) gistDisplay.value = id;
-        setSyncStatus("已绑定 Gist，可点击「从云端拉取」");
+    if (btnSyncSaveSettings) {
+      btnSyncSaveSettings.addEventListener("click", function () {
+        const tokenInput = $("syncToken");
+        const gistInput = $("syncGistIdBind");
+        const token = tokenInput && tokenInput.value.trim();
+        const gistId = gistInput && gistInput.value.trim();
+        setSyncToken(token || null);
+        setGistId(gistId || null);
+        if (gistInput) gistInput.value = getGistId() || "";
+        updateSyncStatusBar();
+        setSyncStatus("已保存");
         startSyncPullInterval();
       });
     }
