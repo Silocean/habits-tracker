@@ -524,7 +524,7 @@
       "</div>" +
       '<div class="header-actions">' +
       '<button type="button" class="btn btn-ghost btn-today-plus" title="今日 +1" aria-label="今日记录 +1">今日 +1</button>' +
-      '<label class="range-label"><span>时间范围</span><span class="range-select-wrap"><button type="button" class="range-prev" aria-label="上一年" title="上一年">‹</button><button type="button" class="range-display" aria-label="跳转到当前年份" title="点击跳转到当前年份">' +
+      '<label class="range-label"><span class="range-select-wrap"><button type="button" class="range-prev" aria-label="上一年" title="上一年">‹</button><button type="button" class="range-display" aria-label="跳转到当前年份" title="点击跳转到当前年份">' +
       escapeHtml(rangeDisplayText) +
       '</button><button type="button" class="range-next" aria-label="下一年" title="下一年">›</button></span></label>' +
       '<div class="card-more-actions-wrap"><button type="button" class="btn btn-ghost btn-more-actions btn-icon-only" title="更多操作" aria-label="更多操作" aria-haspopup="true"><span aria-hidden="true">⋯</span></button><div class="card-actions-dropdown hidden"></div></div>' +
