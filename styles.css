@@ -1117,6 +1117,9 @@ body {
   width: max-content;
   padding: 3px;
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .heatmap-cell {
@@ -1125,6 +1128,9 @@ body {
   border-radius: 2px;
   cursor: pointer;
   transition: transform 0.1s, filter 0.1s;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .heatmap-cell:hover {
