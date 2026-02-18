@@ -1606,10 +1606,17 @@
     reader.readAsText(file, "UTF-8");
   }
   function applyTheme(theme) {
-    document.documentElement.setAttribute("data-theme", theme || "light");
-    localStorage.setItem(THEME_KEY, theme || "light");
+    const t = theme || "light";
+    document.documentElement.setAttribute("data-theme", t);
+    localStorage.setItem(THEME_KEY, t);
     const btn = $("btnTheme");
-    if (btn) btn.setAttribute("aria-label", theme === "dark" ? "切换为浅色" : "切换为深色");
+    if (btn) {
+      btn.setAttribute("aria-label", t === "dark" ? "当前为深色主题，点击切换为浅色" : "当前为浅色主题，点击切换为深色");
+      btn.setAttribute("aria-pressed", t === "dark" ? "true" : "false");
+      btn.setAttribute("title", t === "dark" ? "当前深色 · 点击切换浅色" : "当前浅色 · 点击切换深色");
+      const icon = btn.querySelector(".theme-btn-icon");
+      if (icon) icon.textContent = t === "dark" ? "🌙" : "☀️";
+    }
   }
   function toggleTheme() {
     const cur = document.documentElement.getAttribute("data-theme") || "light";
@@ -1730,9 +1737,9 @@
     updateSyncStatusText();
     if (skeleton) skeleton.classList.add("hidden");
     const placeholderText = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-text]") : null;
-    if (placeholderText) placeholderText.textContent = "点击「新建兴趣」开始记录";
+    if (placeholderText) placeholderText.textContent = "还没有兴趣";
     const placeholderSub = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-sub]") : null;
-    if (placeholderSub) placeholderSub.textContent = "点击「新建兴趣」开始记录你的第一个习惯";
+    if (placeholderSub) placeholderSub.textContent = "点击右上角「新建兴趣」开始记录你的第一个习惯";
     const firstCard = heatmapCards && heatmapCards.querySelector(".heatmap-card");
     if (firstCard && heatmaps.length <= 1) {
       const hint = firstCard.querySelector(".heatmap-hint");

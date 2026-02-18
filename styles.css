@@ -169,6 +169,26 @@ body {
 .btn-icon-only {
   padding: 8px;
 }
+
+/* 主题按钮：当前主题时弱背景，便于识别 */
+.btn-theme .theme-btn-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+[data-theme="light"] .btn-theme {
+  background: rgba(31, 35, 40, 0.06);
+  color: var(--text);
+}
+[data-theme="light"] .btn-theme:hover {
+  background: rgba(31, 35, 40, 0.1);
+}
+[data-theme="dark"] .btn-theme {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+[data-theme="dark"] .btn-theme:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
 .btn.loading {
   pointer-events: none;
   opacity: 0.8;
@@ -345,11 +365,12 @@ body {
 
 .main-placeholder .placeholder-icon {
   display: block;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--border-light);
   flex-shrink: 0;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+.main-placeholder .placeholder-icon svg {
+  display: block;
 }
 
 .main-placeholder .placeholder-sub {
@@ -1175,9 +1196,20 @@ body {
 }
 
 .heatmap-cell.heatmap-cell-today {
-  box-shadow: 0 0 0 2px var(--card-accent, var(--accent));
+  box-shadow: 0 0 0 3px var(--card-accent, var(--accent)),
+    0 0 0 1px var(--bg-card);
   position: relative;
   z-index: 1;
+}
+[data-theme="light"] .heatmap-cell.heatmap-cell-today {
+  box-shadow: 0 0 0 3px var(--card-accent, var(--accent)),
+    0 0 12px rgba(9, 105, 218, 0.25),
+    0 0 0 1px var(--bg-card);
+}
+[data-theme="dark"] .heatmap-cell.heatmap-cell-today {
+  box-shadow: 0 0 0 3px var(--card-accent, var(--accent)),
+    0 0 14px rgba(88, 166, 255, 0.35),
+    0 0 0 1px var(--bg-card);
 }
 
 .heatmap-empty-hint {

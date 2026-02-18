@@ -20,7 +20,7 @@
         <div class="topbar-actions" id="topbarActions">
           <span class="sync-status-text" id="syncStatusText" aria-live="polite" title="云同步状态"></span>
           <span class="sync-loading-indicator hidden" id="syncLoadingIndicator" aria-hidden="true"></span>
-          <button type="button" class="btn btn-ghost btn-icon-only" id="btnTheme" title="切换浅色/深色主题" aria-label="切换浅色/深色主题">🌓</button>
+          <button type="button" class="btn btn-ghost btn-icon-only btn-theme" id="btnTheme" title="切换浅色/深色主题" aria-label="切换为深色主题" aria-pressed="false"><span class="theme-btn-icon" aria-hidden="true">☀️</span></button>
           <div class="export-wrap">
             <button type="button" class="btn btn-ghost" id="btnExport" title="导出数据">导出</button>
             <div class="export-dropdown hidden" id="exportDropdown">
@@ -93,9 +93,32 @@
         </div>
       </div>
       <div class="main-placeholder" id="mainPlaceholder">
-        <span class="placeholder-icon" aria-hidden="true"></span>
+        <span class="placeholder-icon" aria-hidden="true">
+          <svg width="64" height="48" viewBox="0 0 64 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+            <rect x="2" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
+            <rect x="14" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+            <rect x="26" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+            <rect x="38" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
+            <rect x="50" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+            <rect x="2" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+            <rect x="14" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+            <rect x="26" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.7"/>
+            <rect x="38" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+            <rect x="50" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+            <rect x="2" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+            <rect x="14" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.7"/>
+            <rect x="26" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.9"/>
+            <rect x="38" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+            <rect x="50" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
+            <rect x="2" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
+            <rect x="14" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+            <rect x="26" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+            <rect x="38" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+            <rect x="50" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
+          </svg>
+        </span>
         <p data-placeholder-text>加载中…</p>
-        <p class="placeholder-sub" data-placeholder-sub>点击「新建兴趣」开始记录你的第一个习惯</p>
+        <p class="placeholder-sub" data-placeholder-sub>还没有兴趣，点击右上角「新建兴趣」开始</p>
       </div>
       <div class="tag-filter-bar hidden" id="tagFilterBar">
         <span class="tag-filter-label">标签：</span>
