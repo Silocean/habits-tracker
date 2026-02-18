@@ -433,6 +433,8 @@
 
   let cellMenuEl = null;
   let cellMenuClose = null;
+  let suppressNextCellClick = null;
+  let cellLongPressTimer = null;
   function showCellMenu(e, cell, currentCount, onDecrease, onClear) {
     if (cellMenuEl) {
       cellMenuEl.remove();
@@ -629,6 +631,12 @@
 
       cell.addEventListener("click", (e) => {
         if (showAsEmpty) return;
+        if (suppressNextCellClick === cell) {
+          suppressNextCellClick = null;
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         const cur = (heatmap.data[key] || 0) | 0;
         if (e.shiftKey) {
           if (cur <= 0) return;
@@ -644,6 +652,32 @@
         const cur = (heatmap.data[key] || 0) | 0;
         showCellMenu(e, cell, cur, () => updateCellCount(cell, Math.max(0, cur - 1)), () => updateCellCount(cell, 0));
       });
+
+      cell.addEventListener("touchstart", function (e) {
+        if (showAsEmpty) return;
+        if (cellLongPressTimer) clearTimeout(cellLongPressTimer);
+        cellLongPressTimer = setTimeout(() => {
+          cellLongPressTimer = null;
+          const cur = (heatmap.data[key] || 0) | 0;
+          suppressNextCellClick = cell;
+          const touch = e.changedTouches && e.changedTouches[0];
+          const ev = touch ? { preventDefault: () => {}, clientX: touch.clientX, clientY: touch.clientY } : e;
+          showCellMenu(ev, cell, cur, () => updateCellCount(cell, Math.max(0, cur - 1)), () => updateCellCount(cell, 0));
+          setTimeout(() => { suppressNextCellClick = null; }, 400);
+        }, 500);
+      }, { passive: true });
+      cell.addEventListener("touchend", function () {
+        if (cellLongPressTimer) {
+          clearTimeout(cellLongPressTimer);
+          cellLongPressTimer = null;
+        }
+      }, { passive: true });
+      cell.addEventListener("touchmove", function () {
+        if (cellLongPressTimer) {
+          clearTimeout(cellLongPressTimer);
+          cellLongPressTimer = null;
+        }
+      }, { passive: true });
 
       cell.addEventListener("mouseenter", (e) => showTooltip(e, key, () => e.target.dataset.count));
       cell.addEventListener("mouseleave", hideTooltip);
@@ -686,7 +720,7 @@
 
     const hint = document.createElement("p");
     hint.className = "heatmap-hint";
-    hint.textContent = "点击增加 · Shift+点击减少 · 右键菜单可清零";
+    hint.textContent = "点击增加 · Shift+点击减少 · 长按或右键可减少/清零";
     const emptyHint = document.createElement("p");
     emptyHint.className = "heatmap-empty-hint hidden";
     emptyHint.textContent = "点击任意格子开始记录";
@@ -1684,7 +1718,7 @@
     const firstCard = heatmapCards && heatmapCards.querySelector(".heatmap-card");
     if (firstCard && heatmaps.length <= 1) {
       const hint = firstCard.querySelector(".heatmap-hint");
-      if (hint) hint.textContent = "点击格子开始记录 · Shift+点击减少 · 右键菜单可清零";
+      if (hint) hint.textContent = "点击格子开始记录 · Shift+点击减少 · 长按或右键可减少/清零";
     }
     startSyncPullInterval();
   }
