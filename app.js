@@ -233,6 +233,7 @@
   }
 
   function doTodayPlus(heatmap) {
+    if (navigator.vibrate) navigator.vibrate(10);
     doTodayChange(heatmap, 1);
   }
 
@@ -240,6 +241,7 @@
     const todayKey = formatDateKey(new Date());
     const cur = heatmap.data[todayKey] || 0;
     if (cur <= 0) return;
+    if (navigator.vibrate) navigator.vibrate(10);
     doTodayChange(heatmap, -1);
   }
 
@@ -831,8 +833,10 @@
         const cur = (heatmap.data[key] || 0) | 0;
         if (e.shiftKey) {
           if (cur <= 0) return;
+          if (navigator.vibrate) navigator.vibrate(10);
           updateCellCount(cell, cur - 1);
         } else {
+          if (navigator.vibrate) navigator.vibrate(10);
           updateCellCount(cell, cur + 1);
         }
       });
@@ -1387,10 +1391,7 @@
           longPressTimer = null;
           didLongPress = true;
           const heatmap = getHeatmap(heatmapId);
-          if (heatmap) {
-            doTodayMinus(heatmap);
-            if (navigator.vibrate) navigator.vibrate(10);
-          }
+          if (heatmap) doTodayMinus(heatmap);
         }, 500);
       }, { passive: true });
       btn.addEventListener("touchend", () => {
