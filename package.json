@@ -1,0 +1,10 @@
+{
+  "name": "habits-tracker",
+  "private": true,
+  "scripts": {
+    "build:icons": "node scripts/build-icons.js"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.5"
+  }
+}
