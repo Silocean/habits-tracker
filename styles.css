@@ -144,6 +144,50 @@ body {
   flex-wrap: wrap;
 }
 
+.topbar-main-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-more-wrap {
+  display: none;
+  position: relative;
+}
+
+.topbar-more-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  padding: 4px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+  min-width: 140px;
+}
+
+.topbar-more-dropdown.hidden {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .topbar-main-actions {
+    display: none;
+  }
+  .topbar-more-wrap {
+    display: block;
+  }
+}
+
+@media (min-width: 769px) {
+  .topbar-more-wrap {
+    display: none;
+  }
+}
+
 .sync-status-text {
   font-size: 12px;
   color: var(--text-muted);
@@ -399,6 +443,96 @@ body {
   height: 140px;
   background: var(--border-light);
   border-radius: var(--radius);
+}
+
+.quick-record-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 20px 16px;
+  margin: 0 auto 24px;
+  max-width: 1200px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.quick-record-bar.hidden {
+  display: none !important;
+}
+
+.quick-record-summary-row {
+  width: 100%;
+}
+
+.quick-record-summary {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.quick-record-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.quick-record-summary strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.quick-record-pill {
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 6px 12px;
+  min-height: 44px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-page);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-record-pill:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.quick-record-pill:active {
+  transform: scale(0.97);
+}
+
+.quick-record-pill.pill-clicked {
+  animation: pill-feedback 0.2s ease;
+}
+
+@keyframes pill-feedback {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+.quick-record-pill .pill-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.quick-record-pill .pill-count {
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .tag-filter-bar {
@@ -1031,8 +1165,7 @@ body {
 
 /* ===== 热力图区域 ===== */
 .heatmap-wrap {
-  width: fit-content;
-  max-width: 100%;
+  width: 100%;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);

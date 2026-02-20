@@ -155,6 +155,94 @@
     return heatmaps.findIndex((h) => h.id === id);
   }
 
+  function doTodayChange(heatmap, delta) {
+    const todayKey = formatDateKey(new Date());
+    const cur = heatmap.data[todayKey] || 0;
+    const newCount = Math.max(0, cur + delta);
+    if (newCount === 0) delete heatmap.data[todayKey];
+    else heatmap.data[todayKey] = newCount;
+    save();
+    const card = document.getElementById("card-" + heatmap.id);
+    if (!card) return;
+    const grid = card.querySelector(".heatmap-grid");
+    const cell = grid && grid.querySelector('[data-key="' + todayKey + '"]');
+    const viewRange = heatmap.viewRange == null ? "recent" : heatmap.viewRange;
+    const s = getHeatmapStats(heatmap, viewRange);
+    const statsDiv = card.querySelector(".heatmap-stats");
+    if (statsDiv) statsDiv.innerHTML = `总 <strong>${s.total}</strong> 次 · 最长连续 <strong>${s.streakDays}</strong> 天 · 日均 <strong>${s.avgPerDay.toFixed(2)}</strong> 次`;
+    const collapsedSummary = card.querySelector(".header-collapsed-summary");
+    if (card.classList.contains("card-collapsed") && collapsedSummary) {
+      collapsedSummary.textContent = "总 " + s.total + " 次";
+      collapsedSummary.classList.remove("hidden");
+    }
+    const emptyHint = card.querySelector(".heatmap-empty-hint");
+    if (emptyHint) emptyHint.classList.toggle("hidden", s.total > 0);
+    const trendWrap = card.querySelector(".trend-chart-wrap");
+    if (trendWrap && !trendWrap.classList.contains("hidden")) {
+      const trendData = getTrendDataByMonth(heatmap, viewRange);
+      const allZero = trendData.every((x) => x.total === 0);
+      trendWrap.innerHTML = "";
+      trendWrap.classList.toggle("trend-chart-empty", allZero);
+      if (!allZero) {
+        const maxVal = Math.max(1, ...trendData.map((x) => x.total));
+        const h = 80;
+        const gap = 4;
+        const barW = 24;
+        const n = trendData.length;
+        const w = n * barW + (n - 1) * gap;
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+        svg.setAttribute("class", "trend-svg");
+        svg.setAttribute("preserveAspectRatio", "none");
+        trendData.forEach((d, i) => {
+          const barH = (d.total / maxVal) * (h - 16);
+          const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          rect.setAttribute("x", i * (barW + gap));
+          rect.setAttribute("y", h - 16 - barH);
+          rect.setAttribute("width", barW);
+          rect.setAttribute("height", barH || 0);
+          rect.setAttribute("fill", heatmap.color);
+          rect.setAttribute("rx", 2);
+          svg.appendChild(rect);
+        });
+        trendWrap.appendChild(svg);
+      } else {
+        const emptyTip = document.createElement("p");
+        emptyTip.className = "trend-chart-empty-tip";
+        emptyTip.textContent = "暂无数据";
+        trendWrap.appendChild(emptyTip);
+      }
+    }
+    if (cell) {
+      const inYear = cell.dataset.inYear === "1";
+      const yearView = typeof viewRange === "number";
+      const showAsEmpty = yearView && !inYear;
+      const displayLevel = showAsEmpty ? 0 : getLevel(newCount);
+      const colors = getLevelColors(heatmap.color);
+      cell.dataset.count = showAsEmpty ? 0 : newCount;
+      cell.className = "heatmap-cell level-" + displayLevel + (inYear ? "" : " outside-year") + " heatmap-cell-today";
+      if (displayLevel === 0) {
+        cell.classList.add("empty");
+        cell.style.background = "";
+      } else {
+        cell.style.background = colors[displayLevel];
+      }
+      cell.style.setProperty("box-shadow", "0 0 0 1px " + (heatmap.color || "#0969da"));
+    }
+    renderQuickRecordBar();
+  }
+
+  function doTodayPlus(heatmap) {
+    doTodayChange(heatmap, 1);
+  }
+
+  function doTodayMinus(heatmap) {
+    const todayKey = formatDateKey(new Date());
+    const cur = heatmap.data[todayKey] || 0;
+    if (cur <= 0) return;
+    doTodayChange(heatmap, -1);
+  }
+
   function getHeatmap(id) {
     return heatmaps.find((h) => h.id === id);
   }
@@ -706,6 +794,7 @@
       }
       const trendWrapEl = card && card.querySelector(".trend-chart-wrap");
       if (trendWrapEl && !trendWrapEl.classList.contains("hidden")) refreshTrendChart();
+      if (key === formatDateKey(new Date())) renderQuickRecordBar();
     }
 
     const todayKey = formatDateKey(new Date());
@@ -935,24 +1024,7 @@
 
     const btnTodayPlus = header.querySelector(".btn-today-plus");
     if (btnTodayPlus) {
-      btnTodayPlus.addEventListener("click", function () {
-        const todayKeyNow = formatDateKey(new Date());
-        const cur = heatmap.data[todayKeyNow] || 0;
-        const newCount = cur + 1;
-        heatmap.data[todayKeyNow] = newCount;
-        save();
-        const cell = grid.querySelector('[data-key="' + todayKeyNow + '"]');
-        if (cell) updateCellCount(cell, newCount);
-        else {
-          updateStatsDom();
-          if (card.classList.contains("card-collapsed")) {
-            const s = getHeatmapStats(heatmap, heatmap.viewRange == null ? "recent" : heatmap.viewRange);
-            if (collapsedSummary) { collapsedSummary.textContent = "总 " + s.total + " 次"; collapsedSummary.classList.remove("hidden"); }
-          }
-          const trendWrap = card.querySelector(".trend-chart-wrap");
-          if (trendWrap && !trendWrap.classList.contains("hidden")) refreshTrendChart();
-        }
-      });
+      btnTodayPlus.addEventListener("click", function () { doTodayPlus(heatmap); });
     }
 
     function commitTitle() {
@@ -962,6 +1034,7 @@
       titleDisplay.textContent = val;
       titleDisplay.classList.remove("hidden");
       titleInput.classList.add("hidden");
+      renderQuickRecordBar();
     }
 
     titleDisplay.addEventListener("click", function () {
@@ -1129,6 +1202,7 @@
                 cardEl.remove();
                 heatmaps.splice(idx, 1);
                 save();
+                renderQuickRecordBar();
                 renderTagFilterBar();
                 updateFirstUseHint();
               });
@@ -1251,6 +1325,89 @@
     return heatmaps.filter((h) => (h.tags || []).indexOf(selectedTag) >= 0);
   }
 
+  function renderQuickRecordBar() {
+    const bar = $("quickRecordBar");
+    if (!bar) return;
+    const toRender = getHeatmapsToRender();
+    if (toRender.length === 0) {
+      bar.classList.add("hidden");
+      bar.innerHTML = "";
+      return;
+    }
+    const todayKey = formatDateKey(new Date());
+    const recordedCount = toRender.filter((h) => (h.data[todayKey] || 0) > 0).length;
+    bar.classList.remove("hidden");
+    bar.innerHTML =
+      '<div class="quick-record-summary-row"><span class="quick-record-summary">今日已记录 <strong>' + recordedCount + "</strong> / " + toRender.length + " 个兴趣</span></div>" +
+      '<div class="quick-record-pills-row">' +
+      toRender
+        .map((h) => {
+        const count = h.data[todayKey] || 0;
+        const countText = count + " 次";
+        return (
+          '<button type="button" class="quick-record-pill" data-heatmap-id="' +
+          escapeHtml(h.id) +
+          '" title="点击 +1，Shift+点击或长按减少">' +
+          '<span class="pill-swatch" style="background:' +
+          escapeHtml(h.color || "#216e39") +
+          '"></span>' +
+          '<span class="pill-name">' +
+          escapeHtml(h.name || "未命名兴趣") +
+          "</span>" +
+          '<span class="pill-count">' +
+          escapeHtml(countText) +
+          "</span>" +
+          "</button>"
+        );
+      })
+      .join("") +
+      "</div>";
+    bar.querySelectorAll(".quick-record-pill").forEach((btn) => {
+      const heatmapId = btn.dataset.heatmapId;
+      let longPressTimer = null;
+      let didLongPress = false;
+      btn.addEventListener("click", function (e) {
+        if (didLongPress) {
+          didLongPress = false;
+          return;
+        }
+        const heatmap = getHeatmap(heatmapId);
+        if (!heatmap) return;
+        if (e.shiftKey) {
+          doTodayMinus(heatmap);
+        } else {
+          doTodayPlus(heatmap);
+        }
+        btn.classList.add("pill-clicked");
+        setTimeout(() => btn.classList.remove("pill-clicked"), 200);
+      });
+      btn.addEventListener("touchstart", function () {
+        didLongPress = false;
+        longPressTimer = setTimeout(() => {
+          longPressTimer = null;
+          didLongPress = true;
+          const heatmap = getHeatmap(heatmapId);
+          if (heatmap) {
+            doTodayMinus(heatmap);
+            if (navigator.vibrate) navigator.vibrate(10);
+          }
+        }, 500);
+      }, { passive: true });
+      btn.addEventListener("touchend", () => {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+      btn.addEventListener("touchmove", () => {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }, { passive: true });
+    });
+  }
+
   function renderTagFilterBar() {
     const bar = $("tagFilterBar");
     const pillsEl = $("tagFilterPills");
@@ -1319,6 +1476,7 @@
       heatmapCards.classList.remove("hidden");
       toRender.forEach((h) => heatmapCards.appendChild(renderHeatmapCard(h)));
     }
+    renderQuickRecordBar();
     renderTagFilterBar();
     updateFirstUseHint();
   }
@@ -2141,6 +2299,31 @@ ${cardsHtml}
     const shareTimeRange = $("shareTimeRange");
     const shareCustomDates = $("shareCustomDates");
     if (btnShare) btnShare.addEventListener("click", openSharePanel);
+
+    const btnMore = $("btnMore");
+    const topbarMoreDropdown = $("topbarMoreDropdown");
+    if (btnMore && topbarMoreDropdown) {
+      btnMore.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const open = !topbarMoreDropdown.classList.contains("hidden");
+        topbarMoreDropdown.classList.toggle("hidden", open);
+        btnMore.setAttribute("aria-expanded", open ? "false" : "true");
+        document.querySelectorAll(".export-dropdown").forEach((d) => d.classList.add("hidden"));
+      });
+      document.addEventListener("click", function () {
+        topbarMoreDropdown.classList.add("hidden");
+        btnMore.setAttribute("aria-expanded", "false");
+      });
+      $("btnMoreExportJson") && $("btnMoreExportJson").addEventListener("click", function () { exportJson(); topbarMoreDropdown.classList.add("hidden"); });
+      $("btnMoreExportCsv") && $("btnMoreExportCsv").addEventListener("click", function () { exportCsv(); topbarMoreDropdown.classList.add("hidden"); });
+      $("btnMoreImport") && $("btnMoreImport").addEventListener("click", function () {
+        if (importFileInput) importFileInput.click();
+        topbarMoreDropdown.classList.add("hidden");
+      });
+      $("btnMoreSync") && $("btnMoreSync").addEventListener("click", function () { openSyncPanel(); topbarMoreDropdown.classList.add("hidden"); });
+      $("btnMoreShare") && $("btnMoreShare").addEventListener("click", function () { openSharePanel(); topbarMoreDropdown.classList.add("hidden"); });
+    }
+
     if (shareClose) shareClose.addEventListener("click", closeSharePanel);
     if (sharePanel) {
       sharePanel.addEventListener("click", function (e) {

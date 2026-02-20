@@ -21,19 +21,31 @@
           <span class="sync-status-text" id="syncStatusText" aria-live="polite" title="云同步状态"></span>
           <span class="sync-loading-indicator hidden" id="syncLoadingIndicator" aria-hidden="true"></span>
           <button type="button" class="btn btn-ghost btn-icon-only btn-theme" id="btnTheme" title="切换浅色/深色主题" aria-label="切换为深色主题" aria-pressed="false"><span class="theme-btn-icon" aria-hidden="true">☀️</span></button>
-          <div class="export-wrap">
-            <button type="button" class="btn btn-ghost" id="btnExport" title="导出数据">导出</button>
-            <div class="export-dropdown hidden" id="exportDropdown">
-              <button type="button" class="export-option" id="btnExportJson">导出 JSON</button>
-              <button type="button" class="export-option" id="btnExportCsv">导出 CSV</button>
+          <div class="topbar-main-actions">
+            <div class="export-wrap">
+              <button type="button" class="btn btn-ghost" id="btnExport" title="导出数据">导出</button>
+              <div class="export-dropdown hidden" id="exportDropdown">
+                <button type="button" class="export-option" id="btnExportJson">导出 JSON</button>
+                <button type="button" class="export-option" id="btnExportCsv">导出 CSV</button>
+              </div>
+            </div>
+            <div class="import-wrap">
+              <button type="button" class="btn btn-ghost" id="btnImport" title="导入数据">导入</button>
+              <input type="file" class="import-file-input hidden" id="importFileInput" accept=".json,.csv,application/json,text/csv" />
+            </div>
+            <button type="button" class="btn btn-ghost" id="btnSync" title="云同步">云同步</button>
+            <button type="button" class="btn btn-ghost" id="btnShare" title="分享">分享</button>
+          </div>
+          <div class="topbar-more-wrap">
+            <button type="button" class="btn btn-ghost" id="btnMore" title="更多" aria-haspopup="true" aria-expanded="false">更多</button>
+            <div class="topbar-more-dropdown hidden" id="topbarMoreDropdown">
+              <button type="button" class="export-option" id="btnMoreExportJson">导出 JSON</button>
+              <button type="button" class="export-option" id="btnMoreExportCsv">导出 CSV</button>
+              <button type="button" class="export-option" id="btnMoreImport">导入数据</button>
+              <button type="button" class="export-option" id="btnMoreSync">云同步</button>
+              <button type="button" class="export-option" id="btnMoreShare">分享</button>
             </div>
           </div>
-          <div class="import-wrap">
-            <button type="button" class="btn btn-ghost" id="btnImport" title="导入数据">导入</button>
-            <input type="file" class="import-file-input hidden" id="importFileInput" accept=".json,.csv,application/json,text/csv" />
-          </div>
-          <button type="button" class="btn btn-ghost" id="btnSync" title="云同步">云同步</button>
-          <button type="button" class="btn btn-ghost" id="btnShare" title="分享">分享</button>
           <button type="button" class="btn btn-primary btn-new" id="btnNew" title="新建兴趣（N）">
             <span class="btn-icon">+</span> 新建兴趣
           </button>
@@ -165,6 +177,7 @@
         <p data-placeholder-text>加载中…</p>
         <p class="placeholder-sub" data-placeholder-sub>还没有兴趣，点击右上角「新建兴趣」开始</p>
       </div>
+      <div class="quick-record-bar hidden" id="quickRecordBar" role="toolbar" aria-label="今日快捷记录"></div>
       <div class="tag-filter-bar hidden" id="tagFilterBar">
         <span class="tag-filter-label">标签：</span>
         <button type="button" class="tag-filter-pill active" data-tag="">全部</button>
