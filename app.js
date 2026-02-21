@@ -128,27 +128,31 @@
 
   function updateSyncStatusText() {
     const el = $("syncStatusText");
-    if (!el) return;
+    const btn = $("syncStatusBtn");
+    const icon = $("syncStatusIcon");
+    let text = "";
     if (lastSyncErrorMessage) {
-      el.textContent = lastSyncErrorMessage;
-      el.classList.add("sync-dirty");
-      return;
-    }
-    const lastPush = localStorage.getItem(SYNC_LAST_PUSH_KEY);
-    if (lastPush) {
-      const t = parseInt(lastPush, 10);
-      const date = new Date(t);
-      const str = date.toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-      el.textContent = isDirty() ? "未同步更改 · 上次 " + str : "上次同步 " + str;
-      el.classList.toggle("sync-dirty", isDirty());
+      text = lastSyncErrorMessage;
+      if (btn) btn.classList.add("sync-dirty");
+      if (icon) { icon.classList.remove("sync-loading"); icon.classList.add("sync-dirty"); }
     } else {
-      if (isDirty() && !getSyncToken()) {
-        el.textContent = "未同步（请打开「云同步」保存 Token）";
+      const lastPush = localStorage.getItem(SYNC_LAST_PUSH_KEY);
+      if (lastPush) {
+        const t = parseInt(lastPush, 10);
+        const date = new Date(t);
+        const str = date.toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        text = isDirty() ? "未同步更改 · 上次 " + str : "上次同步 " + str;
+        if (btn) btn.classList.toggle("sync-dirty", isDirty());
+        if (icon) { icon.classList.remove("sync-loading"); icon.classList.toggle("sync-dirty", isDirty()); }
       } else {
-        el.textContent = isDirty() ? "未同步更改" : "";
+        if (isDirty() && !getSyncToken()) text = "未同步（请打开「云同步」保存 Token）";
+        else text = isDirty() ? "未同步更改" : "";
+        if (btn) btn.classList.toggle("sync-dirty", isDirty());
+        if (icon) { icon.classList.remove("sync-loading"); icon.classList.toggle("sync-dirty", isDirty()); }
       }
-      el.classList.toggle("sync-dirty", isDirty());
     }
+    if (el) el.textContent = text;
+    if (btn) { btn.title = text || "云同步状态"; btn.setAttribute("aria-label", text || "云同步状态"); }
   }
 
   function getHeatmapIndex(id) {
@@ -492,7 +496,7 @@
     return levels;
   }
 
-  function createHeatmap(name = "未命名兴趣", color = "#216e39") {
+  function createHeatmap(name = "未命名习惯", color = "#216e39") {
     return {
       id: uuid(),
       name,
@@ -700,16 +704,16 @@
 
     const header = document.createElement("header");
     header.className = "heatmap-header";
-    const displayName = heatmap.name || "未命名兴趣";
+    const displayName = heatmap.name || "未命名习惯";
     header.innerHTML =
       '<div class="heatmap-title-wrap">' +
       '<span class="card-drag-handle" draggable="true" aria-label="拖动排序" title="拖动排序"></span>' +
       '<button type="button" class="card-collapse-btn" aria-label="折叠" title="折叠/展开">▶</button>' +
       `<span class="heatmap-title-display" title="点击修改">${escapeHtml(displayName)}</span>` +
-      `<input type="text" class="heatmap-title heatmap-title-edit hidden" placeholder="未命名兴趣" maxlength="32" value="${escapeHtml(heatmap.name)}" />` +
+      `<input type="text" class="heatmap-title heatmap-title-edit hidden" placeholder="未命名习惯" maxlength="32" value="${escapeHtml(heatmap.name)}" />` +
       "</div>" +
       '<div class="header-actions">' +
-      '<button type="button" class="btn btn-ghost btn-today-plus" title="今日 +1" aria-label="今日记录 +1">今日 +1</button>' +
+      '<button type="button" class="btn btn-ghost btn-today-plus hide-on-mobile" title="今日 +1" aria-label="今日记录 +1">今日 +1</button>' +
       '<label class="range-label"><span class="range-select-wrap"><button type="button" class="range-prev" aria-label="上一年" title="上一年">‹</button><button type="button" class="range-display" aria-label="跳转到当前年份" title="点击跳转到当前年份">' +
       escapeHtml(rangeDisplayText) +
       '</button><button type="button" class="range-next" aria-label="下一年" title="下一年">›</button></span></label>' +
@@ -1027,12 +1031,10 @@
     updateCollapsedSummary();
 
     const btnTodayPlus = header.querySelector(".btn-today-plus");
-    if (btnTodayPlus) {
-      btnTodayPlus.addEventListener("click", function () { doTodayPlus(heatmap); });
-    }
+    if (btnTodayPlus) btnTodayPlus.addEventListener("click", function () { doTodayPlus(heatmap); });
 
     function commitTitle() {
-      const val = titleInput.value.trim() || "未命名兴趣";
+      const val = titleInput.value.trim() || "未命名习惯";
       heatmap.name = val;
       save();
       titleDisplay.textContent = val;
@@ -1193,7 +1195,7 @@
       actionsDropdown.querySelector(".card-action-delete").addEventListener("click", function () {
         actionsDropdown.classList.add("hidden");
         showConfirmModal({
-          message: "确定要删除这个兴趣记录吗？",
+          message: "确定要删除这个习惯记录吗？",
           onConfirm: function () {
             const idx = getHeatmapIndex(heatmap.id);
             if (idx === -1) return;
@@ -1342,7 +1344,7 @@
     const recordedCount = toRender.filter((h) => (h.data[todayKey] || 0) > 0).length;
     bar.classList.remove("hidden");
     bar.innerHTML =
-      '<div class="quick-record-summary-row"><span class="quick-record-summary">今日已记录 <strong>' + recordedCount + "</strong> / " + toRender.length + " 个兴趣</span></div>" +
+      '<div class="quick-record-summary-row"><span class="quick-record-summary">今日已记录 <strong>' + recordedCount + "</strong> / " + toRender.length + " 个习惯</span></div>" +
       '<div class="quick-record-pills-row">' +
       toRender
         .map((h) => {
@@ -1356,7 +1358,7 @@
           escapeHtml(h.color || "#216e39") +
           '"></span>' +
           '<span class="pill-name">' +
-          escapeHtml(h.name || "未命名兴趣") +
+          escapeHtml(h.name || "未命名习惯") +
           "</span>" +
           '<span class="pill-count">' +
           escapeHtml(countText) +
@@ -1471,7 +1473,7 @@
       heatmapCards.classList.add("hidden");
       const placeholderText = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-text]") : null;
       if (placeholderText)
-        placeholderText.textContent = selectedTag ? "当前标签下暂无兴趣" : "点击「新建兴趣」开始记录";
+        placeholderText.textContent = selectedTag ? "当前标签下暂无习惯" : "点击「新建习惯」开始记录";
     } else {
       mainPlaceholder.classList.add("hidden");
       heatmapCards.classList.remove("hidden");
@@ -1576,12 +1578,12 @@
     syncInProgress = loading;
     const btnPush = $("btnSyncPush");
     const btnPull = $("btnSyncPull");
-    const indicator = $("syncLoadingIndicator");
+    const icon = $("syncStatusIcon");
     if (btnPush) btnPush.disabled = loading;
     if (btnPull) btnPull.disabled = loading;
     if (btnPush) btnPush.classList.toggle("loading", loading);
     if (btnPull) btnPull.classList.toggle("loading", loading);
-    if (indicator) indicator.classList.toggle("hidden", !loading);
+    if (icon) icon.classList.toggle("sync-loading", loading);
   }
 
   async function pushToGist() {
@@ -1605,7 +1607,7 @@
       body: gistId
         ? JSON.stringify({ files: { [GIST_FILENAME]: { content: body } } })
         : JSON.stringify({
-            description: "兴趣记录热力图",
+            description: "习惯记录热力图",
             public: false,
             files: { [GIST_FILENAME]: { content: body } },
           }),
@@ -1745,7 +1747,7 @@
   function closeSyncPanel() {
     const panel = $("syncPanel");
     if (panel) panel.classList.add("hidden");
-    $("btnSync") && $("btnSync").focus();
+    $("syncStatusBtn") && $("syncStatusBtn").focus();
   }
   function trapFocus(panel) {
     const focusables = panel.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
@@ -1810,7 +1812,7 @@
   function closeSharePanel() {
     const panel = $("sharePanel");
     if (panel) panel.classList.add("hidden");
-    $("btnShare") && $("btnShare").focus();
+    $("syncStatusBtn") && $("syncStatusBtn").focus();
   }
 
   function renderShareInterestsList() {
@@ -1823,7 +1825,7 @@
           '<label class="share-interest-item">' +
           '<input type="checkbox" data-heatmap-id="' + escapeHtml(h.id) + '" checked />' +
           '<span class="share-interest-swatch" style="background:' + escapeHtml(h.color || "#216e39") + '"></span>' +
-          '<span>' + escapeHtml(h.name || "未命名兴趣") + "</span>" +
+          '<span>' + escapeHtml(h.name || "未命名习惯") + "</span>" +
           "</label>"
       )
       .join("");
@@ -1837,13 +1839,13 @@
     const { rangeType, customStart, customEnd } = getShareRangeConfig();
     const toRender = getHeatmapsToRender();
     if (toRender.length === 0) {
-      alert("当前没有可分享的兴趣");
+      alert("当前没有可分享的习惯");
       return;
     }
     const gridDates = getGridDatesForShare(rangeType, customStart, customEnd);
     const todayKey = formatDateKey(new Date());
     const heatmapsData = toRender.map((h) => ({
-      name: h.name || "未命名兴趣",
+      name: h.name || "未命名习惯",
       color: h.color || "#216e39",
       data: h.data || {},
       stats: getHeatmapStatsForShare(h, rangeType, customStart, customEnd),
@@ -1996,7 +1998,7 @@ ${cardsHtml}
     const ctx = canvas.getContext("2d");
     ctx.font = "14px 'Noto Sans SC', sans-serif";
     ctx.fillStyle = "#1f2328";
-    ctx.fillText(heatmap.name || "未命名兴趣", 24, 28);
+    ctx.fillText(heatmap.name || "未命名习惯", 24, 28);
     ctx.font = "12px 'Noto Sans SC', sans-serif";
     ctx.fillStyle = "#656d76";
     ctx.fillText("总 " + stats.total + " 次 · 最长连续 " + stats.streakDays + " 天 · 日均 " + stats.avgPerDay.toFixed(2) + " 次", 24, 50);
@@ -2051,7 +2053,7 @@ ${cardsHtml}
     const list = $("shareInterestsList");
     const checked = list ? list.querySelectorAll('input[type="checkbox"]:checked') : [];
     if (checked.length === 0) {
-      alert("请至少勾选一个兴趣");
+      alert("请至少勾选一个习惯");
       return;
     }
     const toRender = getHeatmapsToRender();
@@ -2208,36 +2210,81 @@ ${cardsHtml}
   }
 
   function bindEvents() {
-    $("btnNew").addEventListener("click", addNewHeatmap);
+    const btnNew = $("btnNew");
+    if (btnNew) btnNew.addEventListener("click", addNewHeatmap);
 
-    const btnExport = $("btnExport");
-    const exportDropdown = $("exportDropdown");
-    if (btnExport && exportDropdown) {
-      btnExport.addEventListener("click", function (e) {
-        e.stopPropagation();
-        exportDropdown.classList.toggle("hidden");
-      });
-      document.addEventListener("click", function () { exportDropdown.classList.add("hidden"); });
-      exportDropdown.addEventListener("click", function (e) { e.stopPropagation(); });
-      $("btnExportJson") && $("btnExportJson").addEventListener("click", function () { exportJson(); exportDropdown.classList.add("hidden"); });
-      $("btnExportCsv") && $("btnExportCsv").addEventListener("click", function () { exportCsv(); exportDropdown.classList.add("hidden"); });
-    }
-    const btnImport = $("btnImport");
     const importFileInput = $("importFileInput");
-    if (btnImport && importFileInput) {
-      btnImport.addEventListener("click", function () { importFileInput.click(); });
-      importFileInput.addEventListener("change", function () {
-        const file = importFileInput.files && importFileInput.files[0];
-        if (file) importFromFile(file);
-        importFileInput.value = "";
+    importFileInput && importFileInput.addEventListener("change", function () {
+      const file = importFileInput.files && importFileInput.files[0];
+      if (file) importFromFile(file);
+      importFileInput.value = "";
+    });
+
+    const syncStatusBtn = $("syncStatusBtn");
+    if (syncStatusBtn) syncStatusBtn.addEventListener("click", openSyncPanel);
+
+    const btnSettings = $("btnSettings");
+    const settingsDropdown = $("settingsDropdown");
+    if (btnSettings && settingsDropdown) {
+      btnSettings.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const open = !settingsDropdown.classList.contains("hidden");
+        settingsDropdown.classList.toggle("hidden", open);
+        btnSettings.setAttribute("aria-expanded", open ? "false" : "true");
       });
+      document.addEventListener("click", function () {
+        settingsDropdown.classList.add("hidden");
+        btnSettings.setAttribute("aria-expanded", "false");
+      });
+      $("btnSettingsNew") && $("btnSettingsNew").addEventListener("click", function () { addNewHeatmap(); settingsDropdown.classList.add("hidden"); });
+      $("btnSettingsExportJson") && $("btnSettingsExportJson").addEventListener("click", function () { exportJson(); settingsDropdown.classList.add("hidden"); });
+      $("btnSettingsExportCsv") && $("btnSettingsExportCsv").addEventListener("click", function () { exportCsv(); settingsDropdown.classList.add("hidden"); });
+      $("btnSettingsImport") && $("btnSettingsImport").addEventListener("click", function () { if (importFileInput) importFileInput.click(); settingsDropdown.classList.add("hidden"); });
+      $("btnSettingsSync") && $("btnSettingsSync").addEventListener("click", function () { openSyncPanel(); settingsDropdown.classList.add("hidden"); });
+      $("btnSettingsShare") && $("btnSettingsShare").addEventListener("click", function () { openSharePanel(); settingsDropdown.classList.add("hidden"); });
     }
+
+    $("settingsBtnTheme") && $("settingsBtnTheme").addEventListener("click", toggleTheme);
+    $("settingsBtnExportJson") && $("settingsBtnExportJson").addEventListener("click", exportJson);
+    $("settingsBtnExportCsv") && $("settingsBtnExportCsv").addEventListener("click", exportCsv);
+    $("settingsBtnImport") && $("settingsBtnImport").addEventListener("click", function () { if (importFileInput) importFileInput.click(); });
+    $("settingsBtnSync") && $("settingsBtnSync").addEventListener("click", openSyncPanel);
+    $("settingsBtnShare") && $("settingsBtnShare").addEventListener("click", openSharePanel);
+
+    const mainEl = $("main");
+    const settingsView = $("settingsView");
+    const tabInterests = $("tabInterests");
+    const tabSettings = $("tabSettings");
+    const bottomTabs = $("bottomTabs");
+    function switchTab(tab) {
+      const isInterests = tab === "interests";
+      if (mainEl) mainEl.classList.toggle("hidden", !isInterests);
+      if (settingsView) settingsView.classList.toggle("hidden", isInterests);
+      if (tabInterests) { tabInterests.classList.toggle("active", isInterests); tabInterests.setAttribute("aria-current", isInterests ? "page" : "false"); }
+      if (tabSettings) tabSettings.classList.toggle("active", !isInterests);
+    }
+    if (tabInterests) tabInterests.addEventListener("click", function () { switchTab("interests"); });
+    if (tabSettings) tabSettings.addEventListener("click", function () { switchTab("settings"); });
+    function updateBottomTabsVisibility() {
+      if (!bottomTabs) return;
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        bottomTabs.classList.remove("hidden");
+        switchTab("interests");
+      } else {
+        bottomTabs.classList.add("hidden");
+        if (mainEl) mainEl.classList.remove("hidden");
+        if (settingsView) settingsView.classList.add("hidden");
+      }
+    }
+    updateBottomTabsVisibility();
+    window.addEventListener("resize", updateBottomTabsVisibility);
+
     const btnTheme = $("btnTheme");
     if (btnTheme) btnTheme.addEventListener("click", toggleTheme);
     document.addEventListener("keydown", function (e) {
       if (e.key === "n" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addNewHeatmap(); return; }
       if (e.key === "N" && !e.ctrlKey && !e.metaKey && document.activeElement && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) { e.preventDefault(); addNewHeatmap(); return; }
-        if (e.key === "Escape") {
+      if (e.key === "Escape") {
         const sharePanel = $("sharePanel");
         if (sharePanel && !sharePanel.classList.contains("hidden")) { closeSharePanel(); return; }
         const panel = $("syncPanel");
@@ -2246,15 +2293,12 @@ ${cardsHtml}
         if (openPicker) { openPicker.classList.add("hidden"); return; }
         const openCardActions = document.querySelector(".card-actions-dropdown:not(.hidden)");
         if (openCardActions) { openCardActions.classList.add("hidden"); return; }
-        exportDropdown && !exportDropdown.classList.contains("hidden") && exportDropdown.classList.add("hidden");
+        if (settingsDropdown && !settingsDropdown.classList.contains("hidden")) { settingsDropdown.classList.add("hidden"); if (btnSettings) btnSettings.setAttribute("aria-expanded", "false"); }
       }
     });
 
-    const btnSync = $("btnSync");
-    const syncStatusText = $("syncStatusText");
     const syncPanel = $("syncPanel");
     const syncClose = $("syncClose");
-    if (btnSync) btnSync.addEventListener("click", openSyncPanel);
     if (syncClose) syncClose.addEventListener("click", closeSyncPanel);
     if (syncPanel) {
       syncPanel.addEventListener("click", function (e) {
@@ -2294,37 +2338,10 @@ ${cardsHtml}
     if (btnPush) btnPush.addEventListener("click", pushToGist);
     if (btnPull) btnPull.addEventListener("click", function () { pullFromGist({ skipDirtyCheck: true }); });
 
-    const btnShare = $("btnShare");
     const sharePanel = $("sharePanel");
     const shareClose = $("shareClose");
     const shareTimeRange = $("shareTimeRange");
     const shareCustomDates = $("shareCustomDates");
-    if (btnShare) btnShare.addEventListener("click", openSharePanel);
-
-    const btnMore = $("btnMore");
-    const topbarMoreDropdown = $("topbarMoreDropdown");
-    if (btnMore && topbarMoreDropdown) {
-      btnMore.addEventListener("click", function (e) {
-        e.stopPropagation();
-        const open = !topbarMoreDropdown.classList.contains("hidden");
-        topbarMoreDropdown.classList.toggle("hidden", open);
-        btnMore.setAttribute("aria-expanded", open ? "false" : "true");
-        document.querySelectorAll(".export-dropdown").forEach((d) => d.classList.add("hidden"));
-      });
-      document.addEventListener("click", function () {
-        topbarMoreDropdown.classList.add("hidden");
-        btnMore.setAttribute("aria-expanded", "false");
-      });
-      $("btnMoreExportJson") && $("btnMoreExportJson").addEventListener("click", function () { exportJson(); topbarMoreDropdown.classList.add("hidden"); });
-      $("btnMoreExportCsv") && $("btnMoreExportCsv").addEventListener("click", function () { exportCsv(); topbarMoreDropdown.classList.add("hidden"); });
-      $("btnMoreImport") && $("btnMoreImport").addEventListener("click", function () {
-        if (importFileInput) importFileInput.click();
-        topbarMoreDropdown.classList.add("hidden");
-      });
-      $("btnMoreSync") && $("btnMoreSync").addEventListener("click", function () { openSyncPanel(); topbarMoreDropdown.classList.add("hidden"); });
-      $("btnMoreShare") && $("btnMoreShare").addEventListener("click", function () { openSharePanel(); topbarMoreDropdown.classList.add("hidden"); });
-    }
-
     if (shareClose) shareClose.addEventListener("click", closeSharePanel);
     if (sharePanel) {
       sharePanel.addEventListener("click", function (e) {
@@ -2346,6 +2363,9 @@ ${cardsHtml}
   }
 
   async function init() {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
     const skeleton = $("mainLoadingSkeleton");
     if (skeleton) skeleton.classList.remove("hidden");
     if (mainPlaceholder) mainPlaceholder.classList.add("hidden");
@@ -2355,7 +2375,7 @@ ${cardsHtml}
     const savedTheme = localStorage.getItem(THEME_KEY);
     applyTheme(savedTheme || "light");
     if (!heatmaps.length) {
-      heatmaps = [createHeatmap("示例兴趣", "#216e39")];
+      heatmaps = [createHeatmap("示例习惯", "#216e39")];
       save();
     }
     const hasSyncConfig = getSyncToken() && getGistId();
@@ -2373,9 +2393,9 @@ ${cardsHtml}
     updateSyncStatusText();
     if (skeleton) skeleton.classList.add("hidden");
     const placeholderText = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-text]") : null;
-    if (placeholderText) placeholderText.textContent = "还没有兴趣";
+    if (placeholderText) placeholderText.textContent = "还没有习惯";
     const placeholderSub = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-sub]") : null;
-    if (placeholderSub) placeholderSub.textContent = "点击右上角「新建兴趣」开始记录你的第一个习惯";
+    if (placeholderSub) placeholderSub.textContent = "点击右上角「新建习惯」开始记录你的第一个习惯";
     const firstCard = heatmapCards && heatmapCards.querySelector(".heatmap-card");
     if (firstCard && heatmaps.length <= 1) {
       const hint = firstCard.querySelector(".heatmap-hint");

@@ -19,37 +19,22 @@
       <div class="topbar-inner">
         <h1 class="logo"><img src="favicon.svg" alt="" class="logo-icon" width="28" height="28" />日迹</h1>
         <div class="topbar-actions" id="topbarActions">
-          <span class="sync-status-text" id="syncStatusText" aria-live="polite" title="云同步状态"></span>
-          <span class="sync-loading-indicator hidden" id="syncLoadingIndicator" aria-hidden="true"></span>
+          <span class="sync-status-text visually-hidden" id="syncStatusText" aria-live="polite"></span>
+          <button type="button" class="btn btn-ghost btn-icon-only sync-status-btn" id="syncStatusBtn" title="云同步状态" aria-label="云同步状态"><span class="sync-status-icon" id="syncStatusIcon" aria-hidden="true"></span></button>
           <button type="button" class="btn btn-ghost btn-icon-only btn-theme" id="btnTheme" title="切换浅色/深色主题" aria-label="切换为深色主题" aria-pressed="false"><span class="theme-btn-icon" aria-hidden="true">☀️</span></button>
-          <div class="topbar-main-actions">
-            <div class="export-wrap">
-              <button type="button" class="btn btn-ghost" id="btnExport" title="导出数据">导出</button>
-              <div class="export-dropdown hidden" id="exportDropdown">
-                <button type="button" class="export-option" id="btnExportJson">导出 JSON</button>
-                <button type="button" class="export-option" id="btnExportCsv">导出 CSV</button>
-              </div>
-            </div>
-            <div class="import-wrap">
-              <button type="button" class="btn btn-ghost" id="btnImport" title="导入数据">导入</button>
-              <input type="file" class="import-file-input hidden" id="importFileInput" accept=".json,.csv,application/json,text/csv" />
-            </div>
-            <button type="button" class="btn btn-ghost" id="btnSync" title="云同步">云同步</button>
-            <button type="button" class="btn btn-ghost" id="btnShare" title="分享">分享</button>
-          </div>
-          <div class="topbar-more-wrap">
-            <button type="button" class="btn btn-ghost" id="btnMore" title="更多" aria-haspopup="true" aria-expanded="false">更多</button>
-            <div class="topbar-more-dropdown hidden" id="topbarMoreDropdown">
-              <button type="button" class="export-option" id="btnMoreExportJson">导出 JSON</button>
-              <button type="button" class="export-option" id="btnMoreExportCsv">导出 CSV</button>
-              <button type="button" class="export-option" id="btnMoreImport">导入数据</button>
-              <button type="button" class="export-option" id="btnMoreSync">云同步</button>
-              <button type="button" class="export-option" id="btnMoreShare">分享</button>
+          <button type="button" class="btn btn-primary btn-new desktop-only" id="btnNew" title="新建习惯（N）"><span class="btn-icon">+</span> 新建习惯</button>
+          <div class="topbar-settings-wrap desktop-only">
+            <button type="button" class="btn btn-ghost" id="btnSettings" title="设置" aria-haspopup="true" aria-expanded="false">设置</button>
+            <div class="settings-dropdown hidden" id="settingsDropdown">
+              <button type="button" class="export-option" id="btnSettingsNew">新建习惯</button>
+              <button type="button" class="export-option" id="btnSettingsExportJson">导出 JSON</button>
+              <button type="button" class="export-option" id="btnSettingsExportCsv">导出 CSV</button>
+              <button type="button" class="export-option" id="btnSettingsImport">导入数据</button>
+              <button type="button" class="export-option" id="btnSettingsSync">云同步</button>
+              <button type="button" class="export-option" id="btnSettingsShare">分享</button>
             </div>
           </div>
-          <button type="button" class="btn btn-primary btn-new" id="btnNew" title="新建兴趣（N）">
-            <span class="btn-icon">+</span> 新建兴趣
-          </button>
+          <input type="file" class="import-file-input hidden" id="importFileInput" accept=".json,.csv,application/json,text/csv" />
         </div>
       </div>
     </header>
@@ -105,7 +90,7 @@
           <button type="button" class="share-close" id="shareClose" aria-label="关闭（Esc）">×</button>
         </div>
         <div class="share-instructions" id="shareInstructions">
-          <p class="share-instructions-title">选择时间范围和兴趣，可导出只读分享页或生成分享图。</p>
+          <p class="share-instructions-title">选择时间范围和习惯，可导出只读分享页或生成分享图。</p>
         </div>
         <div class="share-form">
           <label class="share-field">
@@ -128,7 +113,7 @@
             </label>
           </div>
           <label class="share-field">
-            <span class="share-field-label">生成分享图时包含的兴趣</span>
+            <span class="share-field-label">生成分享图时包含的习惯</span>
             <div class="share-interests-list" id="shareInterestsList"></div>
           </label>
         </div>
@@ -142,7 +127,8 @@
         </div>
       </div>
     </div>
-    <main class="main" id="main" tabindex="-1">
+    <div class="main-wrap">
+    <main class="main" id="main" tabindex="-1" data-tab="interests">
       <div class="main-loading-skeleton hidden" id="mainLoadingSkeleton" aria-hidden="true">
         <div class="skeleton-card">
           <div class="skeleton-header"></div>
@@ -176,7 +162,7 @@
           </svg>
         </span>
         <p data-placeholder-text>加载中…</p>
-        <p class="placeholder-sub" data-placeholder-sub>还没有兴趣，点击右上角「新建兴趣」开始</p>
+        <p class="placeholder-sub" data-placeholder-sub>还没有习惯，点击右上角「新建习惯」开始</p>
       </div>
       <div class="quick-record-bar hidden" id="quickRecordBar" role="toolbar" aria-label="今日快捷记录"></div>
       <div class="tag-filter-bar hidden" id="tagFilterBar">
@@ -190,12 +176,30 @@
         <p>点击任意格子开始第一次记录</p>
       </div>
     </main>
+    <div class="settings-view hidden" id="settingsView" data-tab="settings" aria-label="设置">
+      <div class="settings-view-inner">
+        <h2 class="settings-view-title">设置</h2>
+        <div class="settings-list">
+          <button type="button" class="settings-item" id="settingsBtnTheme"><span class="settings-item-icon" aria-hidden="true">🌓</span> 主题切换</button>
+          <button type="button" class="settings-item" id="settingsBtnExportJson">导出 JSON</button>
+          <button type="button" class="settings-item" id="settingsBtnExportCsv">导出 CSV</button>
+          <button type="button" class="settings-item" id="settingsBtnImport">导入数据</button>
+          <button type="button" class="settings-item" id="settingsBtnSync">云同步</button>
+          <button type="button" class="settings-item" id="settingsBtnShare">分享</button>
+        </div>
+      </div>
+    </div>
+    </div>
+    <nav class="bottom-tabs hidden" id="bottomTabs" aria-label="主导航">
+      <button type="button" class="bottom-tab active" id="tabInterests" data-tab="interests" aria-current="page">习惯</button>
+      <button type="button" class="bottom-tab" id="tabSettings" data-tab="settings">设置</button>
+    </nav>
   </div>
   <div class="confirm-modal hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalMessage">
     <div class="confirm-modal-backdrop" id="confirmModalBackdrop"></div>
     <div class="confirm-modal-inner">
       <h2 class="confirm-modal-title" id="confirmModalTitle">确认</h2>
-      <p class="confirm-modal-message" id="confirmModalMessage">确定要删除这个兴趣记录吗？</p>
+      <p class="confirm-modal-message" id="confirmModalMessage">确定要删除这个习惯记录吗？</p>
       <div class="confirm-modal-actions">
         <button type="button" class="btn btn-ghost" id="confirmModalCancel">取消</button>
         <button type="button" class="btn btn-danger" id="confirmModalConfirm">确定</button>
