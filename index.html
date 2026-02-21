@@ -179,13 +179,26 @@
     <div class="settings-view hidden" id="settingsView" data-tab="settings" aria-label="设置">
       <div class="settings-view-inner">
         <h2 class="settings-view-title">设置</h2>
-        <div class="settings-list">
-          <button type="button" class="settings-item" id="settingsBtnTheme"><span class="settings-item-icon" aria-hidden="true">🌓</span> 主题切换</button>
-          <button type="button" class="settings-item" id="settingsBtnExportJson">导出 JSON</button>
-          <button type="button" class="settings-item" id="settingsBtnExportCsv">导出 CSV</button>
-          <button type="button" class="settings-item" id="settingsBtnImport">导入数据</button>
-          <button type="button" class="settings-item" id="settingsBtnSync">云同步</button>
-          <button type="button" class="settings-item" id="settingsBtnShare">分享</button>
+        <div class="settings-group">
+          <h3 class="settings-group-title">外观</h3>
+          <div class="settings-list">
+            <button type="button" class="settings-item" id="settingsBtnTheme"><span class="settings-item-icon" aria-hidden="true">🌓</span> 主题切换</button>
+          </div>
+        </div>
+        <div class="settings-group">
+          <h3 class="settings-group-title">数据</h3>
+          <div class="settings-list">
+            <button type="button" class="settings-item" id="settingsBtnExportJson">导出 JSON</button>
+            <button type="button" class="settings-item" id="settingsBtnExportCsv">导出 CSV</button>
+            <button type="button" class="settings-item" id="settingsBtnImport">导入数据</button>
+          </div>
+        </div>
+        <div class="settings-group">
+          <h3 class="settings-group-title">同步与分享</h3>
+          <div class="settings-list">
+            <button type="button" class="settings-item" id="settingsBtnSync">云同步</button>
+            <button type="button" class="settings-item" id="settingsBtnShare">分享</button>
+          </div>
         </div>
       </div>
     </div>

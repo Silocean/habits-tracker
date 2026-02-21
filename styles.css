@@ -133,7 +133,7 @@ body {
   gap: 16px;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 16px 32px;
+  padding: 16px 28px;
   flex-wrap: wrap;
 }
 
@@ -424,14 +424,14 @@ body {
 
 .main {
   flex: 1;
-  padding: 32px;
+  padding: 32px 28px;
   overflow: auto;
   min-height: 0;
 }
 
 .settings-view {
   flex: 1;
-  padding: 32px;
+  padding: 32px 28px;
   overflow: auto;
   min-height: 0;
   background: var(--bg-page);
@@ -445,6 +445,20 @@ body {
   font-weight: 600;
   margin: 0 0 20px 0;
   color: var(--text);
+}
+.settings-group {
+  margin-bottom: 24px;
+}
+.settings-group:last-child {
+  margin-bottom: 0;
+}
+.settings-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 8px 4px;
 }
 .settings-list {
   display: flex;
@@ -499,7 +513,7 @@ body {
 }
 @media (max-width: 768px) {
   .topbar-inner {
-    padding: max(16px, env(safe-area-inset-top)) 16px 16px 16px;
+    padding: max(16px, env(safe-area-inset-top)) 24px 16px 24px;
   }
   .bottom-tabs {
     display: flex;
@@ -521,7 +535,7 @@ body {
     overflow: visible;
     flex: none;
     min-height: auto;
-    padding: 24px 16px;
+    padding: 24px 24px;
   }
   .main {
     --cell-size: 20px;
