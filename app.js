@@ -1521,6 +1521,7 @@
       if (fromIdx < toIdx) toIdx--;
       heatmaps.splice(toIdx, 0, item);
       save();
+      renderQuickRecordBar();
       const draggedEl = heatmapCards.querySelector("#card-" + draggedId);
       if (draggedEl) heatmapCards.insertBefore(draggedEl, targetCard);
     });
