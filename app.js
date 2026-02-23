@@ -2237,7 +2237,6 @@ ${cardsHtml}
         settingsDropdown.classList.add("hidden");
         btnSettings.setAttribute("aria-expanded", "false");
       });
-      $("btnSettingsNew") && $("btnSettingsNew").addEventListener("click", function () { addNewHeatmap(); settingsDropdown.classList.add("hidden"); });
       $("btnSettingsExportJson") && $("btnSettingsExportJson").addEventListener("click", function () { exportJson(); settingsDropdown.classList.add("hidden"); });
       $("btnSettingsExportCsv") && $("btnSettingsExportCsv").addEventListener("click", function () { exportCsv(); settingsDropdown.classList.add("hidden"); });
       $("btnSettingsImport") && $("btnSettingsImport").addEventListener("click", function () { if (importFileInput) importFileInput.click(); settingsDropdown.classList.add("hidden"); });
