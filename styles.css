@@ -253,9 +253,17 @@ body {
 }
 
 .btn-theme .theme-btn-icon {
-  font-size: 1.15rem;
-  line-height: 1;
+  width: 18px;
+  height: 18px;
+  display: block;
 }
+
+.btn-settings .settings-btn-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
 .btn.loading {
   pointer-events: none;
   opacity: 0.8;

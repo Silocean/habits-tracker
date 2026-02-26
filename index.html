@@ -21,10 +21,19 @@
         <div class="topbar-actions" id="topbarActions">
           <span class="sync-status-text visually-hidden" id="syncStatusText" aria-live="polite"></span>
           <button type="button" class="btn btn-ghost btn-icon-only sync-status-btn" id="syncStatusBtn" title="云同步状态" aria-label="云同步状态"><span class="sync-status-icon" id="syncStatusIcon" aria-hidden="true"></span></button>
-          <button type="button" class="btn btn-ghost btn-icon-only btn-theme" id="btnTheme" title="切换浅色/深色主题" aria-label="切换为深色主题" aria-pressed="false"><span class="theme-btn-icon" aria-hidden="true">☀️</span></button>
-          <button type="button" class="btn btn-primary btn-new desktop-only" id="btnNew" title="新建习惯（N）"><span class="btn-icon">+</span> 新建习惯</button>
+          <button type="button" class="btn btn-ghost btn-icon-only btn-theme" id="btnTheme" title="切换浅色/深色主题" aria-label="切换为深色主题" aria-pressed="false">
+            <svg class="theme-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M12 2v2.4M12 19.6V22M4.93 4.93l1.7 1.7M17.37 17.37l1.7 1.7M2 12h2.4M19.6 12H22M4.93 19.07l1.7-1.7M17.37 6.63l1.7-1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
           <div class="topbar-settings-wrap desktop-only">
-            <button type="button" class="btn btn-ghost" id="btnSettings" title="设置" aria-haspopup="true" aria-expanded="false">设置</button>
+            <button type="button" class="btn btn-ghost btn-icon-only btn-settings" id="btnSettings" title="设置" aria-label="设置" aria-haspopup="true" aria-expanded="false">
+              <svg class="settings-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+              </svg>
+            </button>
             <div class="settings-dropdown hidden" id="settingsDropdown">
               <button type="button" class="export-option" id="btnSettingsExportJson">导出 JSON</button>
               <button type="button" class="export-option" id="btnSettingsExportCsv">导出 CSV</button>
@@ -33,6 +42,7 @@
               <button type="button" class="export-option" id="btnSettingsShare">分享</button>
             </div>
           </div>
+          <button type="button" class="btn btn-primary btn-new desktop-only" id="btnNew" title="新建习惯（N）"><span class="btn-icon">+</span> 新建习惯</button>
           <input type="file" class="import-file-input hidden" id="importFileInput" accept=".json,.csv,application/json,text/csv" />
         </div>
       </div>

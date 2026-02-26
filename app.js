@@ -2231,7 +2231,12 @@ ${cardsHtml}
       btn.setAttribute("aria-pressed", t === "dark" ? "true" : "false");
       btn.setAttribute("title", t === "dark" ? "当前深色 · 点击切换浅色" : "当前浅色 · 点击切换深色");
       const icon = btn.querySelector(".theme-btn-icon");
-      if (icon) icon.textContent = t === "dark" ? "🌙" : "☀️";
+      if (icon) {
+        icon.innerHTML =
+          t === "dark"
+            ? '<path d="M20.354 15.354A9 9 0 0 1 8.646 3.646a.7.7 0 0 0-.92-.92A10.4 10.4 0 1 0 21.274 16.274a.7.7 0 0 0-.92-.92z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+            : '<circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2.4M12 19.6V22M4.93 4.93l1.7 1.7M17.37 17.37l1.7 1.7M2 12h2.4M19.6 12H22M4.93 19.07l1.7-1.7M17.37 6.63l1.7-1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
+      }
     }
   }
   function toggleTheme() {
