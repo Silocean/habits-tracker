@@ -100,11 +100,41 @@
     lastSyncedSnapshot = localStorage.getItem(SYNC_LAST_SNAPSHOT_KEY);
   }
 
+  function isQuotaExceededError(err) {
+    return (
+      err &&
+      (err.name === "QuotaExceededError" ||
+        err.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+        err.code === 22 ||
+        err.code === 1014)
+    );
+  }
+
   function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(heatmaps));
+    const serialized = JSON.stringify(heatmaps);
+    try {
+      localStorage.setItem(STORAGE_KEY, serialized);
+    } catch (err) {
+      if (isQuotaExceededError(err)) {
+        // 旧的云同步快照会额外占据大量 localStorage，先释放再重试一次保存
+        try {
+          localStorage.removeItem(SYNC_LAST_SNAPSHOT_KEY);
+          lastSyncedSnapshot = null;
+          localStorage.setItem(STORAGE_KEY, serialized);
+          console.warn("[日迹 storage] 存储配额不足，已清理同步快照并重试保存成功");
+        } catch (retryErr) {
+          console.error("[日迹 storage] 存储配额不足，保存失败", retryErr);
+          return false;
+        }
+      } else {
+        console.error("[日迹 storage] 保存失败", err);
+        return false;
+      }
+    }
     updateSyncStatusText();
     scheduleAutoPush();
     console.log("[日迹 sync] save() 已调用");
+    return true;
   }
 
   function scheduleAutoPush() {
@@ -1062,7 +1092,6 @@
 
     function applyRangeValue(value) {
       heatmap.viewRange = value === "recent" ? "recent" : value;
-      save();
       renderAllHeatmaps();
     }
 
