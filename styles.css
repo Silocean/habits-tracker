@@ -918,7 +918,7 @@ body::after {
 .heatmap-card {
   width: 100%;
   transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
-  animation: fade-rise 0.5s var(--ease-out) both;
+  animation: fade-rise 0.5s var(--ease-out) backwards;
 }
 
 .heatmap-card:nth-child(1) { animation-delay: 0.02s; }
@@ -928,6 +928,7 @@ body::after {
 .heatmap-card:nth-child(5) { animation-delay: 0.22s; }
 
 .heatmap-card.card-removing {
+  animation: none;
   opacity: 0;
   transform: scale(0.97) translateY(-8px);
   pointer-events: none;
@@ -1482,7 +1483,6 @@ body::after {
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
 }
 
 .heatmap-stats {

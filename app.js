@@ -1228,23 +1228,35 @@
           onConfirm: function () {
             const idx = getHeatmapIndex(heatmap.id);
             if (idx === -1) return;
+            const finishRemove = function () {
+              const stillIdx = getHeatmapIndex(heatmap.id);
+              if (stillIdx === -1) return;
+              const el = document.getElementById("card-" + heatmap.id);
+              if (el) el.remove();
+              heatmaps.splice(stillIdx, 1);
+              save();
+              renderQuickRecordBar();
+              renderTagFilterBar();
+              updateFirstUseHint();
+              if (heatmaps.length === 0) renderAllHeatmaps();
+            };
             const cardEl = document.getElementById("card-" + heatmap.id);
             if (cardEl) {
+              let done = false;
+              const complete = function () {
+                if (done) return;
+                done = true;
+                finishRemove();
+              };
               cardEl.classList.add("card-removing");
               cardEl.addEventListener("transitionend", function onEnd(e) {
                 if (e.target !== cardEl || e.propertyName !== "opacity") return;
                 cardEl.removeEventListener("transitionend", onEnd);
-                cardEl.remove();
-                heatmaps.splice(idx, 1);
-                save();
-                renderQuickRecordBar();
-                renderTagFilterBar();
-                updateFirstUseHint();
+                complete();
               });
+              setTimeout(complete, 400);
             } else {
-              heatmaps.splice(idx, 1);
-              save();
-              renderAllHeatmaps();
+              finishRemove();
             }
           },
         });
