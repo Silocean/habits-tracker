@@ -12,7 +12,7 @@
   const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
   const CELL_PX = 16;
   const GAP_PX = 5;
-  const COLOR_PRESETS = ["#216e39", "#0969da", "#bf8700", "#8250df", "#cf222e"];
+  const COLOR_PRESETS = ["#1b7a45", "#2f6fed", "#c69026", "#8250df", "#c23b3b"];
 
   let heatmaps = [];
   let lastSyncedSnapshot = null;
@@ -261,7 +261,7 @@
       } else {
         cell.style.background = colors[displayLevel];
       }
-      cell.style.setProperty("box-shadow", "0 0 0 1px " + (heatmap.color || "#0969da"));
+      cell.style.setProperty("box-shadow", "0 0 0 1px " + (heatmap.color || "#1b7a45"));
     }
     renderQuickRecordBar();
   }
@@ -526,7 +526,7 @@
     return levels;
   }
 
-  function createHeatmap(name = "未命名习惯", color = "#216e39") {
+  function createHeatmap(name = "未命名习惯", color = "#1b7a45") {
     return {
       id: uuid(),
       name,
@@ -803,7 +803,7 @@
         cell.style.background = getLevelColors(heatmap.color)[displayLevel];
       }
       if (isToday) {
-        cell.style.setProperty("box-shadow", "0 0 0 1px " + (heatmap.color || "#0969da"));
+        cell.style.setProperty("box-shadow", "0 0 0 1px " + (heatmap.color || "#1b7a45"));
       } else {
         cell.style.removeProperty("box-shadow");
       }
@@ -2429,7 +2429,7 @@ ${cardsHtml}
     const placeholderText = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-text]") : null;
     if (placeholderText) placeholderText.textContent = "还没有习惯";
     const placeholderSub = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-sub]") : null;
-    if (placeholderSub) placeholderSub.textContent = "点击右上角「新建习惯」开始记录你的第一个习惯";
+    if (placeholderSub) placeholderSub.textContent = "还没有习惯。点右上角「新建习惯」，开始记录你的日迹。";
     const firstCard = heatmapCards && heatmapCards.querySelector(".heatmap-card");
     if (firstCard && heatmaps.length <= 1) {
       const hint = firstCard.querySelector(".heatmap-hint");

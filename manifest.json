@@ -4,8 +4,8 @@
   "description": "每日足迹热力图，支持云同步",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f5f7f9",
-  "theme_color": "#0969da",
+  "background_color": "#eef3f1",
+  "theme_color": "#1b7a45",
   "lang": "zh-CN",
   "icons": [
     {"src": "apple-touch-icon.png", "type": "image/png", "sizes": "180x180", "purpose": "any"},
