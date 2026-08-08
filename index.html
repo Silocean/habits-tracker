@@ -28,6 +28,12 @@
               <path d="M12 2v2.4M12 19.6V22M4.93 4.93l1.7 1.7M17.37 17.37l1.7 1.7M2 12h2.4M19.6 12H22M4.93 19.07l1.7-1.7M17.37 6.63l1.7-1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
           </button>
+          <button type="button" class="btn btn-ghost btn-icon-only btn-layout desktop-only" id="btnLayout" title="切换布局" aria-label="当前分栏布局，点击切换为列表" aria-pressed="true">
+            <svg class="layout-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <rect x="3" y="4" width="7" height="16" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+              <rect x="13" y="4" width="8" height="16" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            </svg>
+          </button>
           <div class="topbar-settings-wrap desktop-only">
             <button type="button" class="btn btn-ghost btn-icon-only btn-settings" id="btnSettings" title="设置" aria-label="设置" aria-haspopup="true" aria-expanded="false">
               <svg class="settings-btn-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -36,6 +42,7 @@
               </svg>
             </button>
             <div class="settings-dropdown hidden" id="settingsDropdown">
+              <button type="button" class="export-option" id="btnSettingsLayout">切换布局</button>
               <button type="button" class="export-option" id="btnSettingsExportJson">导出 JSON</button>
               <button type="button" class="export-option" id="btnSettingsExportCsv">导出 CSV</button>
               <button type="button" class="export-option" id="btnSettingsImport">导入数据</button>
@@ -146,44 +153,55 @@
           <div class="skeleton-grid"></div>
         </div>
       </div>
-      <div class="main-placeholder" id="mainPlaceholder">
-        <span class="placeholder-icon" aria-hidden="true">
-          <svg width="64" height="48" viewBox="0 0 64 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
-            <rect x="2" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
-            <rect x="14" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
-            <rect x="26" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
-            <rect x="38" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
-            <rect x="50" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
-            <rect x="2" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
-            <rect x="14" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
-            <rect x="26" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.7"/>
-            <rect x="38" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
-            <rect x="50" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
-            <rect x="2" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
-            <rect x="14" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.7"/>
-            <rect x="26" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.9"/>
-            <rect x="38" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
-            <rect x="50" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
-            <rect x="2" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
-            <rect x="14" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
-            <rect x="26" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
-            <rect x="38" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
-            <rect x="50" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
-          </svg>
-        </span>
-        <p data-placeholder-text>加载中…</p>
-        <p class="placeholder-sub" data-placeholder-sub>还没有习惯。点右上角「新建习惯」，开始记录你的日迹。</p>
-      </div>
-      <div class="quick-record-bar hidden" id="quickRecordBar" role="toolbar" aria-label="今日快捷记录"></div>
-      <div class="tag-filter-bar hidden" id="tagFilterBar">
-        <span class="tag-filter-label">标签：</span>
-        <button type="button" class="tag-filter-pill active" data-tag="">全部</button>
-        <div class="tag-filter-pills" id="tagFilterPills"></div>
-      </div>
-      <div class="heatmap-cards" id="heatmapCards" role="list"></div>
-      <div class="first-use-hint hidden" id="firstUseHint">
-        <span class="first-use-hint-arrow">↓</span>
-        <p>点击任意格子开始第一次记录</p>
+      <div class="workspace" id="workspace">
+        <aside class="habit-sidebar hidden" id="habitSidebar" aria-label="习惯列表">
+          <div class="habit-sidebar-header">
+            <span class="habit-sidebar-title">习惯</span>
+            <span class="habit-sidebar-count" id="habitSidebarCount"></span>
+          </div>
+          <div class="habit-list" id="habitList" role="listbox" aria-label="选择习惯"></div>
+        </aside>
+        <div class="habit-detail" id="habitDetail">
+          <div class="main-placeholder" id="mainPlaceholder">
+            <span class="placeholder-icon" aria-hidden="true">
+              <svg width="64" height="48" viewBox="0 0 64 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+                <rect x="2" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
+                <rect x="14" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+                <rect x="26" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+                <rect x="38" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
+                <rect x="50" y="2" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+                <rect x="2" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+                <rect x="14" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+                <rect x="26" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.7"/>
+                <rect x="38" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+                <rect x="50" y="12" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+                <rect x="2" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+                <rect x="14" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.7"/>
+                <rect x="26" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.9"/>
+                <rect x="38" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+                <rect x="50" y="22" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
+                <rect x="2" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
+                <rect x="14" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+                <rect x="26" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.5"/>
+                <rect x="38" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.35"/>
+                <rect x="50" y="32" width="10" height="8" rx="2" fill="currentColor" opacity="0.2"/>
+              </svg>
+            </span>
+            <p data-placeholder-text>加载中…</p>
+            <p class="placeholder-sub" data-placeholder-sub>还没有习惯。点右上角「新建习惯」，开始记录你的日迹。</p>
+          </div>
+          <div class="quick-record-bar hidden" id="quickRecordBar" role="toolbar" aria-label="今日快捷记录"></div>
+          <div class="tag-filter-bar hidden" id="tagFilterBar">
+            <span class="tag-filter-label">标签：</span>
+            <button type="button" class="tag-filter-pill active" data-tag="">全部</button>
+            <div class="tag-filter-pills" id="tagFilterPills"></div>
+          </div>
+          <div class="heatmap-cards" id="heatmapCards" role="list"></div>
+          <div class="first-use-hint hidden" id="firstUseHint">
+            <span class="first-use-hint-arrow">↓</span>
+            <p>点击任意格子开始第一次记录</p>
+          </div>
+        </div>
       </div>
     </main>
     <div class="settings-view hidden" id="settingsView" data-tab="settings" aria-label="设置">
@@ -193,6 +211,7 @@
           <h3 class="settings-group-title">外观</h3>
           <div class="settings-list">
             <button type="button" class="settings-item" id="settingsBtnTheme"><span class="settings-item-icon" aria-hidden="true">🌓</span> 主题切换</button>
+            <button type="button" class="settings-item" id="settingsBtnLayout"><span class="settings-item-icon" aria-hidden="true">▦</span> <span id="settingsBtnLayoutLabel">布局：分栏</span></button>
           </div>
         </div>
         <div class="settings-group">

@@ -5,6 +5,7 @@
   const SYNC_LAST_PUSH_KEY = "habits-tracker-sync-last-push";
   const SYNC_LAST_SNAPSHOT_KEY = "habits-tracker-sync-last-snapshot";
   const THEME_KEY = "habits-tracker-theme";
+  const LAYOUT_KEY = "habits-tracker-layout";
   const GIST_FILENAME = "habits-tracker.json";
   const GIST_API = "https://api.github.com/gists";
   const WEEKS = 53;
@@ -18,7 +19,14 @@
   let lastSyncedSnapshot = null;
   let syncInProgress = false;
   let selectedTag = "";
+  let selectedHeatmapId = null;
+  let layoutMode = "split";
   let autoPushTimer = null;
+  const DESKTOP_MQ = "(min-width: 769px)";
+  const LAYOUT_ICON_SPLIT =
+    '<rect x="3" y="4" width="7" height="16" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="4" width="8" height="16" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>';
+  const LAYOUT_ICON_STACK =
+    '<rect x="3" y="5" width="18" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="11" width="18" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="17" width="18" height="4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.8"/>';
   const AUTO_PUSH_DELAY_MS = 3000;
   const SYNC_PULL_INTERVAL_MS = 5 * 60 * 1000; // 5 分钟，避免 100 次/小时 限额
   let syncPullIntervalId = null;
@@ -74,6 +82,74 @@
   const $ = (id) => document.getElementById(id);
   const mainPlaceholder = $("mainPlaceholder");
   const heatmapCards = $("heatmapCards");
+  const habitSidebar = $("habitSidebar");
+  const habitList = $("habitList");
+  const workspace = $("workspace");
+
+  function isDesktopLayout() {
+    return window.matchMedia(DESKTOP_MQ).matches;
+  }
+
+  /** 分栏布局：用户选择 split 且处于桌面宽度时生效 */
+  function isSplitLayout() {
+    return layoutMode === "split" && isDesktopLayout();
+  }
+
+  function updateLayoutToggleUI() {
+    const split = layoutMode === "split";
+    const btn = $("btnLayout");
+    if (btn) {
+      btn.setAttribute("aria-pressed", split ? "true" : "false");
+      btn.setAttribute(
+        "aria-label",
+        split ? "当前分栏布局，点击切换为列表" : "当前列表布局，点击切换为分栏"
+      );
+      btn.setAttribute(
+        "title",
+        split ? "当前分栏 · 点击切换列表" : "当前列表 · 点击切换分栏"
+      );
+      const icon = btn.querySelector(".layout-btn-icon");
+      if (icon) icon.innerHTML = split ? LAYOUT_ICON_SPLIT : LAYOUT_ICON_STACK;
+    }
+    const settingsLabel = $("settingsBtnLayoutLabel");
+    if (settingsLabel) settingsLabel.textContent = split ? "布局：分栏" : "布局：列表";
+    const settingsOpt = $("btnSettingsLayout");
+    if (settingsOpt) settingsOpt.textContent = split ? "切换为列表布局" : "切换为分栏布局";
+  }
+
+  function applyLayoutMode(mode, options) {
+    const opts = options || {};
+    layoutMode = mode === "stack" ? "stack" : "split";
+    localStorage.setItem(LAYOUT_KEY, layoutMode);
+    updateLayoutToggleUI();
+    if (!opts.skipRender) renderAllHeatmaps();
+  }
+
+  function toggleLayoutMode() {
+    applyLayoutMode(layoutMode === "split" ? "stack" : "split");
+  }
+
+  function ensureSelectedHeatmapId(toRender) {
+    const list = toRender || getHeatmapsToRender();
+    if (!list.length) {
+      selectedHeatmapId = null;
+      return null;
+    }
+    if (!selectedHeatmapId || !list.some((h) => h.id === selectedHeatmapId)) {
+      selectedHeatmapId = list[0].id;
+    }
+    return selectedHeatmapId;
+  }
+
+  function selectHeatmap(id, options) {
+    const opts = options || {};
+    if (!id || selectedHeatmapId === id) {
+      if (opts.forceRender) renderAllHeatmaps();
+      return;
+    }
+    selectedHeatmapId = id;
+    renderAllHeatmaps();
+  }
 
   function uuid() {
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
@@ -196,6 +272,8 @@
     if (newCount === 0) delete heatmap.data[todayKey];
     else heatmap.data[todayKey] = newCount;
     save();
+    renderQuickRecordBar();
+    renderHabitList();
     const card = document.getElementById("card-" + heatmap.id);
     if (!card) return;
     const grid = card.querySelector(".heatmap-grid");
@@ -209,8 +287,12 @@
       collapsedSummary.textContent = "总 " + s.total + " 次";
       collapsedSummary.classList.remove("hidden");
     }
+    const hasData = habitHasAnyData(heatmap);
     const emptyHint = card.querySelector(".heatmap-empty-hint");
-    if (emptyHint) emptyHint.classList.toggle("hidden", s.total > 0);
+    if (emptyHint) emptyHint.classList.toggle("hidden", hasData);
+    const opHint = card.querySelector(".heatmap-hint");
+    if (opHint) opHint.classList.toggle("hidden", hasData);
+    updateFirstUseHint();
     const trendWrap = card.querySelector(".trend-chart-wrap");
     if (trendWrap && !trendWrap.classList.contains("hidden")) {
       const trendData = getTrendDataByMonth(heatmap, viewRange);
@@ -263,7 +345,6 @@
       }
       cell.style.setProperty("box-shadow", "0 0 0 1px " + (heatmap.color || "#1b7a45"));
     }
-    renderQuickRecordBar();
   }
 
   function doTodayPlus(heatmap) {
@@ -822,15 +903,18 @@
           sum.classList.remove("hidden");
         }
       }
+      const hasData = habitHasAnyData(heatmap);
       const emptyHintEl = card && card.querySelector(".heatmap-empty-hint");
-      if (emptyHintEl) {
-        const s = getHeatmapStats(heatmap, heatmap.viewRange == null ? "recent" : heatmap.viewRange);
-        if (s.total === 0) emptyHintEl.classList.remove("hidden");
-        else emptyHintEl.classList.add("hidden");
-      }
+      if (emptyHintEl) emptyHintEl.classList.toggle("hidden", hasData);
+      const hintEl = card && card.querySelector(".heatmap-hint");
+      if (hintEl) hintEl.classList.toggle("hidden", hasData);
       const trendWrapEl = card && card.querySelector(".trend-chart-wrap");
       if (trendWrapEl && !trendWrapEl.classList.contains("hidden")) refreshTrendChart();
-      if (key === formatDateKey(new Date())) renderQuickRecordBar();
+      if (key === formatDateKey(new Date())) {
+        renderQuickRecordBar();
+        renderHabitList();
+      }
+      updateFirstUseHint();
     }
 
     const todayKey = formatDateKey(new Date());
@@ -950,13 +1034,15 @@
     const hint = document.createElement("p");
     hint.className = "heatmap-hint";
     hint.textContent = "点击增加 · Shift+点击减少 · 长按或右键可减少/清零";
+    // 有记录后收起操作说明，降低噪音
+    if (habitHasAnyData(heatmap)) hint.classList.add("hidden");
     const emptyHint = document.createElement("p");
     emptyHint.className = "heatmap-empty-hint hidden";
     emptyHint.textContent = "点击任意格子开始记录";
     function updateEmptyHint() {
-      const s = getHeatmapStats(heatmap, heatmap.viewRange == null ? "recent" : heatmap.viewRange);
-      if (s.total === 0) emptyHint.classList.remove("hidden");
-      else emptyHint.classList.add("hidden");
+      const hasData = habitHasAnyData(heatmap);
+      emptyHint.classList.toggle("hidden", hasData);
+      hint.classList.toggle("hidden", hasData);
     }
     updateEmptyHint();
     const trendToggle = document.createElement("button");
@@ -1071,6 +1157,7 @@
       titleDisplay.classList.remove("hidden");
       titleInput.classList.add("hidden");
       renderQuickRecordBar();
+      renderHabitList();
     }
 
     titleDisplay.addEventListener("click", function () {
@@ -1175,6 +1262,7 @@
         if (!/^#[0-f]{6}$/i.test(hex)) return;
         heatmap.color = hex;
         save();
+        renderHabitList();
         if (swatchPreview) swatchPreview.style.background = hex;
         hexInput.value = hex;
         const c = hexToRgb(hex);
@@ -1231,14 +1319,14 @@
             const finishRemove = function () {
               const stillIdx = getHeatmapIndex(heatmap.id);
               if (stillIdx === -1) return;
-              const el = document.getElementById("card-" + heatmap.id);
-              if (el) el.remove();
+              const nextId =
+                (heatmaps[stillIdx + 1] && heatmaps[stillIdx + 1].id) ||
+                (heatmaps[stillIdx - 1] && heatmaps[stillIdx - 1].id) ||
+                null;
               heatmaps.splice(stillIdx, 1);
+              if (selectedHeatmapId === heatmap.id) selectedHeatmapId = nextId;
               save();
-              renderQuickRecordBar();
-              renderTagFilterBar();
-              updateFirstUseHint();
-              if (heatmaps.length === 0) renderAllHeatmaps();
+              renderAllHeatmaps();
             };
             const cardEl = document.getElementById("card-" + heatmap.id);
             if (cardEl) {
@@ -1372,9 +1460,20 @@
     return heatmaps.filter((h) => (h.tags || []).indexOf(selectedTag) >= 0);
   }
 
+  function habitHasAnyData(heatmap) {
+    if (!heatmap || !heatmap.data) return false;
+    return Object.keys(heatmap.data).some((k) => (heatmap.data[k] || 0) > 0);
+  }
+
   function renderQuickRecordBar() {
     const bar = $("quickRecordBar");
     if (!bar) return;
+    // 分栏布局用侧栏打卡，避免与列表重复
+    if (isSplitLayout()) {
+      bar.classList.add("hidden");
+      bar.innerHTML = "";
+      return;
+    }
     const toRender = getHeatmapsToRender();
     if (toRender.length === 0) {
       bar.classList.add("hidden");
@@ -1420,6 +1519,10 @@
         }
         const heatmap = getHeatmap(heatmapId);
         if (!heatmap) return;
+        if (isSplitLayout() && selectedHeatmapId !== heatmapId) {
+          selectedHeatmapId = heatmapId;
+          renderAllHeatmaps();
+        }
         if (e.shiftKey) {
           doTodayMinus(heatmap);
         } else {
@@ -1494,9 +1597,13 @@
     const hintEl = $("firstUseHint");
     if (!hintEl) return;
     const toRender = getHeatmapsToRender();
-    const single = heatmaps.length === 1 && toRender.length === 1;
-    const total = single ? getHeatmapStats(toRender[0], toRender[0].viewRange == null ? "recent" : toRender[0].viewRange).total : 1;
-    if (single && total === 0) {
+    const focus = isSplitLayout()
+      ? toRender.find((h) => h.id === selectedHeatmapId) || toRender[0]
+      : toRender.length === 1
+        ? toRender[0]
+        : null;
+    // 仅当当前习惯完全没有任何打卡记录时提示，避免按年份视图误判
+    if (focus && !habitHasAnyData(focus) && (isSplitLayout() || heatmaps.length === 1)) {
       hintEl.classList.remove("hidden");
       const firstCard = heatmapCards.querySelector(".heatmap-card");
       if (firstCard) firstCard.classList.add("has-first-use-hint");
@@ -1506,9 +1613,105 @@
     }
   }
 
+  function renderHabitList() {
+    if (!habitList || !habitSidebar || !workspace) return;
+    const toRender = getHeatmapsToRender();
+    const countEl = $("habitSidebarCount");
+    if (!toRender.length) {
+      habitSidebar.classList.add("hidden");
+      workspace.classList.remove("has-sidebar");
+      habitList.innerHTML = "";
+      if (countEl) countEl.textContent = "";
+      return;
+    }
+    ensureSelectedHeatmapId(toRender);
+    if (isSplitLayout()) {
+      habitSidebar.classList.remove("hidden");
+      workspace.classList.add("has-sidebar");
+    } else {
+      habitSidebar.classList.add("hidden");
+      workspace.classList.remove("has-sidebar");
+    }
+    if (countEl) countEl.textContent = String(toRender.length);
+    const todayKey = formatDateKey(new Date());
+    habitList.innerHTML = toRender
+      .map((h) => {
+        const todayCount = h.data[todayKey] || 0;
+        const s = getHeatmapStats(h, h.viewRange == null ? "recent" : h.viewRange);
+        const active = h.id === selectedHeatmapId;
+        return (
+          '<div class="habit-list-item' +
+          (active ? " active" : "") +
+          (todayCount > 0 ? " has-today" : "") +
+          '" role="option" tabindex="0" aria-selected="' +
+          (active ? "true" : "false") +
+          '" draggable="true" data-heatmap-id="' +
+          escapeHtml(h.id) +
+          '">' +
+          '<span class="habit-list-swatch" style="background:' +
+          escapeHtml(h.color || "#1b7a45") +
+          '" aria-hidden="true"></span>' +
+          '<span class="habit-list-meta">' +
+          '<span class="habit-list-name">' +
+          escapeHtml(h.name || "未命名习惯") +
+          "</span>" +
+          '<span class="habit-list-sub">总 ' +
+          s.total +
+          " · 连续 " +
+          s.streakDays +
+          " 天</span>" +
+          "</span>" +
+          '<button type="button" class="habit-list-today-btn" data-heatmap-id="' +
+          escapeHtml(h.id) +
+          '" title="点击 +1，Shift+点击减少" aria-label="' +
+          escapeHtml(h.name || "未命名习惯") +
+          " 今日打卡，当前 " +
+          todayCount +
+          ' 次">' +
+          '<span class="habit-list-today-label">今日</span>' +
+          '<span class="habit-list-today-num">' +
+          todayCount +
+          "</span>" +
+          "</button>" +
+          "</div>"
+        );
+      })
+      .join("");
+    habitList.querySelectorAll(".habit-list-item").forEach((item) => {
+      const id = item.dataset.heatmapId;
+      item.addEventListener("click", function (e) {
+        if (e.target.closest(".habit-list-today-btn")) return;
+        selectHeatmap(id);
+      });
+      item.addEventListener("keydown", function (e) {
+        if (e.target.closest(".habit-list-today-btn")) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          selectHeatmap(id);
+        }
+      });
+    });
+    habitList.querySelectorAll(".habit-list-today-btn").forEach((btn) => {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const heatmapId = this.dataset.heatmapId;
+        const heatmap = getHeatmap(heatmapId);
+        if (!heatmap) return;
+        if (isSplitLayout() && selectedHeatmapId !== heatmapId) {
+          selectedHeatmapId = heatmapId;
+          renderAllHeatmaps();
+        }
+        if (e.shiftKey) doTodayMinus(heatmap);
+        else doTodayPlus(heatmap);
+      });
+    });
+  }
+
   function renderAllHeatmaps() {
     heatmapCards.innerHTML = "";
     const toRender = getHeatmapsToRender();
+    ensureSelectedHeatmapId(toRender);
+    renderHabitList();
     if (toRender.length === 0) {
       mainPlaceholder.classList.remove("hidden");
       heatmapCards.classList.add("hidden");
@@ -1518,15 +1721,40 @@
     } else {
       mainPlaceholder.classList.add("hidden");
       heatmapCards.classList.remove("hidden");
-      toRender.forEach((h) => heatmapCards.appendChild(renderHeatmapCard(h)));
+      const split = isSplitLayout();
+      const cardsToShow = split
+        ? toRender.filter((h) => h.id === selectedHeatmapId)
+        : toRender;
+      let needSave = false;
+      cardsToShow.forEach((h) => {
+        if (split && h.collapsed) {
+          h.collapsed = false;
+          needSave = true;
+        }
+        heatmapCards.appendChild(renderHeatmapCard(h));
+      });
+      if (needSave) save();
     }
     renderQuickRecordBar();
     renderTagFilterBar();
     updateFirstUseHint();
   }
 
+  function reorderHeatmap(draggedId, targetId) {
+    if (!draggedId || !targetId || draggedId === targetId) return false;
+    const fromIdx = heatmaps.findIndex((h) => h.id === draggedId);
+    let toIdx = heatmaps.findIndex((h) => h.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return false;
+    const [item] = heatmaps.splice(fromIdx, 1);
+    if (fromIdx < toIdx) toIdx--;
+    heatmaps.splice(toIdx, 0, item);
+    save();
+    return true;
+  }
+
   function setupCardDragDrop() {
     heatmapCards.addEventListener("dragstart", function (e) {
+      if (isSplitLayout()) return;
       const handle = e.target.closest(".card-drag-handle");
       if (!handle) return;
       const card = handle.closest(".heatmap-card");
@@ -1536,6 +1764,7 @@
       card.classList.add("card-dragging");
     });
     heatmapCards.addEventListener("dragover", function (e) {
+      if (isSplitLayout()) return;
       const card = e.target.closest(".heatmap-card");
       if (!card) return;
       e.preventDefault();
@@ -1544,38 +1773,74 @@
       card.classList.add("card-drag-over");
     });
     heatmapCards.addEventListener("dragleave", function (e) {
+      if (isSplitLayout()) return;
       if (!e.target.closest(".heatmap-card")) return;
       const card = e.target.closest(".heatmap-card");
       if (!heatmapCards.contains(e.relatedTarget) || !card.contains(e.relatedTarget)) card.classList.remove("card-drag-over");
     });
     heatmapCards.addEventListener("drop", function (e) {
+      if (isSplitLayout()) return;
       e.preventDefault();
       heatmapCards.querySelectorAll(".heatmap-card").forEach((c) => c.classList.remove("card-drag-over"));
       const targetCard = e.target.closest(".heatmap-card");
       if (!targetCard) return;
       const draggedId = e.dataTransfer.getData("text/plain");
-      if (!draggedId || targetCard.dataset.heatmapId === draggedId) return;
-      const fromIdx = heatmaps.findIndex((h) => h.id === draggedId);
-      let toIdx = heatmaps.findIndex((h) => h.id === targetCard.dataset.heatmapId);
-      if (fromIdx === -1 || toIdx === -1) return;
-      const [item] = heatmaps.splice(fromIdx, 1);
-      if (fromIdx < toIdx) toIdx--;
-      heatmaps.splice(toIdx, 0, item);
-      save();
+      if (!reorderHeatmap(draggedId, targetCard.dataset.heatmapId)) return;
       renderQuickRecordBar();
+      renderHabitList();
       const draggedEl = heatmapCards.querySelector("#card-" + draggedId);
       if (draggedEl) heatmapCards.insertBefore(draggedEl, targetCard);
     });
-    heatmapCards.addEventListener("dragend", function (e) {
+    heatmapCards.addEventListener("dragend", function () {
       heatmapCards.querySelectorAll(".heatmap-card").forEach((c) => {
         c.classList.remove("card-dragging", "card-drag-over");
       });
     });
+
+    if (habitList) {
+      habitList.addEventListener("dragstart", function (e) {
+        const item = e.target.closest(".habit-list-item");
+        if (!item) return;
+        e.dataTransfer.setData("text/plain", item.dataset.heatmapId);
+        e.dataTransfer.effectAllowed = "move";
+        item.classList.add("habit-list-dragging");
+      });
+      habitList.addEventListener("dragover", function (e) {
+        const item = e.target.closest(".habit-list-item");
+        if (!item) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        habitList.querySelectorAll(".habit-list-item").forEach((c) => c.classList.remove("habit-list-drag-over"));
+        item.classList.add("habit-list-drag-over");
+      });
+      habitList.addEventListener("dragleave", function (e) {
+        const item = e.target.closest(".habit-list-item");
+        if (!item) return;
+        if (!habitList.contains(e.relatedTarget) || !item.contains(e.relatedTarget)) {
+          item.classList.remove("habit-list-drag-over");
+        }
+      });
+      habitList.addEventListener("drop", function (e) {
+        e.preventDefault();
+        habitList.querySelectorAll(".habit-list-item").forEach((c) => c.classList.remove("habit-list-drag-over"));
+        const target = e.target.closest(".habit-list-item");
+        if (!target) return;
+        const draggedId = e.dataTransfer.getData("text/plain");
+        if (!reorderHeatmap(draggedId, target.dataset.heatmapId)) return;
+        renderAllHeatmaps();
+      });
+      habitList.addEventListener("dragend", function () {
+        habitList.querySelectorAll(".habit-list-item").forEach((c) => {
+          c.classList.remove("habit-list-dragging", "habit-list-drag-over");
+        });
+      });
+    }
   }
 
   function addNewHeatmap() {
     const heatmap = createHeatmap();
     heatmaps.push(heatmap);
+    selectedHeatmapId = heatmap.id;
     save();
     renderAllHeatmaps();
     const card = $("card-" + heatmap.id);
@@ -2283,6 +2548,11 @@ ${cardsHtml}
         settingsDropdown.classList.add("hidden");
         btnSettings.setAttribute("aria-expanded", "false");
       });
+      $("btnSettingsLayout") && $("btnSettingsLayout").addEventListener("click", function () {
+        toggleLayoutMode();
+        settingsDropdown.classList.add("hidden");
+        btnSettings.setAttribute("aria-expanded", "false");
+      });
       $("btnSettingsExportJson") && $("btnSettingsExportJson").addEventListener("click", function () { exportJson(); settingsDropdown.classList.add("hidden"); });
       $("btnSettingsExportCsv") && $("btnSettingsExportCsv").addEventListener("click", function () { exportCsv(); settingsDropdown.classList.add("hidden"); });
       $("btnSettingsImport") && $("btnSettingsImport").addEventListener("click", function () { if (importFileInput) importFileInput.click(); settingsDropdown.classList.add("hidden"); });
@@ -2290,6 +2560,8 @@ ${cardsHtml}
       $("btnSettingsShare") && $("btnSettingsShare").addEventListener("click", function () { openSharePanel(); settingsDropdown.classList.add("hidden"); });
     }
 
+    $("btnLayout") && $("btnLayout").addEventListener("click", toggleLayoutMode);
+    $("settingsBtnLayout") && $("settingsBtnLayout").addEventListener("click", toggleLayoutMode);
     $("settingsBtnTheme") && $("settingsBtnTheme").addEventListener("click", toggleTheme);
     $("settingsBtnExportJson") && $("settingsBtnExportJson").addEventListener("click", exportJson);
     $("settingsBtnExportCsv") && $("settingsBtnExportCsv").addEventListener("click", exportCsv);
@@ -2323,7 +2595,15 @@ ${cardsHtml}
       }
     }
     updateBottomTabsVisibility();
-    window.addEventListener("resize", updateBottomTabsVisibility);
+    let wasDesktop = isDesktopLayout();
+    window.addEventListener("resize", function () {
+      updateBottomTabsVisibility();
+      const nowDesktop = isDesktopLayout();
+      if (nowDesktop !== wasDesktop) {
+        wasDesktop = nowDesktop;
+        renderAllHeatmaps();
+      }
+    });
 
     const btnTheme = $("btnTheme");
     if (btnTheme) btnTheme.addEventListener("click", toggleTheme);
@@ -2420,6 +2700,9 @@ ${cardsHtml}
     load();
     const savedTheme = localStorage.getItem(THEME_KEY);
     applyTheme(savedTheme || "light");
+    const savedLayout = localStorage.getItem(LAYOUT_KEY);
+    layoutMode = savedLayout === "stack" ? "stack" : "split";
+    updateLayoutToggleUI();
     if (!heatmaps.length) {
       heatmaps = [createHeatmap("示例习惯", "#216e39")];
       save();
@@ -2442,11 +2725,6 @@ ${cardsHtml}
     if (placeholderText) placeholderText.textContent = "还没有习惯";
     const placeholderSub = mainPlaceholder ? mainPlaceholder.querySelector("[data-placeholder-sub]") : null;
     if (placeholderSub) placeholderSub.textContent = "还没有习惯。点右上角「新建习惯」，开始记录你的日迹。";
-    const firstCard = heatmapCards && heatmapCards.querySelector(".heatmap-card");
-    if (firstCard && heatmaps.length <= 1) {
-      const hint = firstCard.querySelector(".heatmap-hint");
-      if (hint) hint.textContent = "点击格子开始记录 · Shift+点击减少 · 长按或右键可减少/清零";
-    }
     startSyncPullInterval();
   }
 
