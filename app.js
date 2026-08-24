@@ -281,7 +281,7 @@
     const viewRange = heatmap.viewRange == null ? "recent" : heatmap.viewRange;
     const s = getHeatmapStats(heatmap, viewRange);
     const statsDiv = card.querySelector(".heatmap-stats");
-    if (statsDiv) statsDiv.innerHTML = `总 <strong>${s.total}</strong> 次 · 最长连续 <strong>${s.streakDays}</strong> 天 · 日均 <strong>${s.avgPerDay.toFixed(2)}</strong> 次`;
+    if (statsDiv) statsDiv.innerHTML = `总 <strong>${s.total}</strong> 次 · 单日最大 <strong>${s.maxPerDay}</strong> 次 · 最长连续 <strong>${s.streakDays}</strong> 天 · 日均 <strong>${s.avgPerDay.toFixed(2)}</strong> 次`;
     const collapsedSummary = card.querySelector(".header-collapsed-summary");
     if (card.classList.contains("card-collapsed") && collapsedSummary) {
       collapsedSummary.textContent = "总 " + s.total + " 次";
@@ -472,7 +472,7 @@
     return `${y}-${m}-${day}`;
   }
 
-  /** 统计当前时间范围内的总次数、最长连续天数、日均次数（按唯一日期统计，避免同一日重复计入） */
+  /** 统计当前时间范围内的总次数、单日最大次数、最长连续天数、日均次数（按唯一日期统计，避免同一日重复计入） */
   function getHeatmapStats(heatmap, viewRange) {
     const gridDates = getGridDates(viewRange);
     const rangeDates = viewRange === "recent" ? gridDates : gridDates.filter((x) => x.inYear);
@@ -480,10 +480,12 @@
     rangeDates.forEach(({ date }) => uniqueKeys.add(formatDateKey(date)));
     const daysInRange = uniqueKeys.size;
     let total = 0;
+    let maxPerDay = 0;
     const keysWithRecord = [];
     uniqueKeys.forEach((key) => {
       const c = heatmap.data[key] || 0;
       total += c;
+      if (c > maxPerDay) maxPerDay = c;
       if (c >= 1) keysWithRecord.push(key);
     });
     keysWithRecord.sort();
@@ -505,7 +507,7 @@
       if (run > streakDays) streakDays = run;
     }
     const avgPerDay = daysInRange ? total / daysInRange : 0;
-    return { total, streakDays, daysInRange, avgPerDay };
+    return { total, streakDays, daysInRange, avgPerDay, maxPerDay };
   }
 
   /** 分享专用：根据时间范围类型计算统计 */
@@ -516,10 +518,12 @@
     rangeDates.forEach(({ date }) => uniqueKeys.add(formatDateKey(date)));
     const daysInRange = uniqueKeys.size;
     let total = 0;
+    let maxPerDay = 0;
     const keysWithRecord = [];
     uniqueKeys.forEach((key) => {
       const c = heatmap.data[key] || 0;
       total += c;
+      if (c > maxPerDay) maxPerDay = c;
       if (c >= 1) keysWithRecord.push(key);
     });
     keysWithRecord.sort();
@@ -541,7 +545,7 @@
       if (run > streakDays) streakDays = run;
     }
     const avgPerDay = daysInRange ? total / daysInRange : 0;
-    return { total, streakDays, daysInRange, avgPerDay };
+    return { total, streakDays, daysInRange, avgPerDay, maxPerDay };
   }
 
   /** 当前时间范围内每月总次数，用于趋势图 */
@@ -836,7 +840,7 @@
     statsDiv.className = "heatmap-stats";
     function updateStatsDom() {
       const s = getHeatmapStats(heatmap, heatmap.viewRange == null ? "recent" : heatmap.viewRange);
-      statsDiv.innerHTML = `总 <strong>${s.total}</strong> 次 · 最长连续 <strong>${s.streakDays}</strong> 天 · 日均 <strong>${s.avgPerDay.toFixed(2)}</strong> 次`;
+      statsDiv.innerHTML = `总 <strong>${s.total}</strong> 次 · 单日最大 <strong>${s.maxPerDay}</strong> 次 · 最长连续 <strong>${s.streakDays}</strong> 天 · 日均 <strong>${s.avgPerDay.toFixed(2)}</strong> 次`;
     }
     updateStatsDom();
 
@@ -893,7 +897,7 @@
       const st = card && card.querySelector(".heatmap-stats");
       if (st) {
         const s = getHeatmapStats(heatmap, heatmap.viewRange == null ? "recent" : heatmap.viewRange);
-        st.innerHTML = `总 <strong>${s.total}</strong> 次 · 最长连续 <strong>${s.streakDays}</strong> 天 · 日均 <strong>${s.avgPerDay.toFixed(2)}</strong> 次`;
+        st.innerHTML = `总 <strong>${s.total}</strong> 次 · 单日最大 <strong>${s.maxPerDay}</strong> 次 · 最长连续 <strong>${s.streakDays}</strong> 天 · 日均 <strong>${s.avgPerDay.toFixed(2)}</strong> 次`;
       }
       if (card && card.classList.contains("card-collapsed")) {
         const sum = card.querySelector(".header-collapsed-summary");
@@ -2200,6 +2204,8 @@
           "</h3>" +
           '<p class="readonly-stats">总 <strong>' +
           hm.stats.total +
+          "</strong> 次 · 单日最大 <strong>" +
+          hm.stats.maxPerDay +
           "</strong> 次 · 最长连续 <strong>" +
           hm.stats.streakDays +
           "</strong> 天 · 日均 <strong>" +
@@ -2308,7 +2314,7 @@ ${cardsHtml}
     ctx.fillText(heatmap.name || "未命名习惯", 24, 28);
     ctx.font = "12px 'Noto Sans SC', sans-serif";
     ctx.fillStyle = "#656d76";
-    ctx.fillText("总 " + stats.total + " 次 · 最长连续 " + stats.streakDays + " 天 · 日均 " + stats.avgPerDay.toFixed(2) + " 次", 24, 50);
+    ctx.fillText("总 " + stats.total + " 次 · 单日最大 " + stats.maxPerDay + " 次 · 最长连续 " + stats.streakDays + " 天 · 日均 " + stats.avgPerDay.toFixed(2) + " 次", 24, 50);
     const legendY = 68;
     ctx.fillStyle = "#656d76";
     ctx.font = "11px sans-serif";
